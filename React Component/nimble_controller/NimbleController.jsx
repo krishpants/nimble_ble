@@ -70,7 +70,7 @@ const SpeedSlider = styled(ReactSlider)`
 
 const NimbleController = () => {
 
-    let COMPATABLE_HW_VERSION = "0.01";
+    let COMPATABLE_HW_VERSION = "0.02";
 
     const [bleCharacteristic, setBleCharacteristic] = useState(null);
     const [bleDevice, setBleDevice] = useState(null);
