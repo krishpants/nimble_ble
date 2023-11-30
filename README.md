@@ -23,7 +23,7 @@ AirIn/AirOut - buttons are found in the lower right.
 When paused the reciever will ease to the base position to limit slip off.
 
 If you want continuous stroking a delay of 0s can be used.
-Note: currently perameters are only adjusted during the pause phase to avoid the reciever jumping location. Next step will be to work on real time adjustability of Speed and Range while keeping a smooth opperation.
+~~Note: currently perameters are only adjusted during the pause phase to avoid the reciever jumping location. Next step will be to work on real time adjustability of Speed and Range while keeping a smooth opperation.~~
 
 ## Advanced Usage:
 ESP Sketch
@@ -37,3 +37,9 @@ You may need to enable Web Bluetooth API as an experimental feature in chrome be
 
 Device not showing up in bluetooth menu on computer?
 BLE communications will not appear in an OS bluetooth menu and there is no "Pairing" stage as such. connection is done directly from the browser window and the ESP should be presented when clicking the BT connect button on page load if it is on and waiting for a connection.
+
+## Change Log
+
+Known issues - Sliders not grabing well
+0.02 - Sin Gen Function changed - Value changes during motion now ease smoothly.
+0.01 - First Working

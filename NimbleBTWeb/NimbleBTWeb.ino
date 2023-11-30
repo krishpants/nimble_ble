@@ -17,11 +17,12 @@
 #define LOOP_COUNT_CHARACTERISTIC_UUID "03f779e0-65b8-4dbf-a984-637d02b8c07c"
 #define DEVICE_NAME "Nimble_BT"
 
-std::string HW_VERSION = "0.01";
+std::string HW_VERSION = "0.02";
 
 // Set By App
 bool running;
 int targetSpeed; //0-100
+float targetFrequency;
 long targetMinPosition; // -1000 > 1000 & < targetMaxPosition
 long targetMaxPosition; // -1000 > 1000 & > targetMinPosition
 int loopCap;
@@ -33,7 +34,6 @@ bool airOut;
 
 long minPosition;
 long maxPosition;
-int speed;
 float frequency;
 
 bool inBasePosition = false;
@@ -44,6 +44,11 @@ int runningStage = 0;
 long positionCommand = 0;
 
 bool defaultsSet = false;
+
+// Generate Sin Wave Version
+unsigned long lastGenUpdateTime;
+float phase = 0.0;
+bool isFirstCall = true;
 
 
 BLECharacteristic *pVersionCharacteristic;
@@ -109,6 +114,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
             loopDelay = std::stol(parts[5]); // Convert to long
             airIn = std::stoi(parts[6]) != 0; // Convert to bool
             airOut = std::stoi(parts[7]) != 0; // Convert to bool
+            targetFrequency = mapSpeedToFrequency(targetSpeed);
             defaultsSet = true;
             printVariableValuesSingleLine();
         } catch (const std::invalid_argument& e) {
@@ -143,6 +149,19 @@ void updateLoopCount() {
         lastNotifiedLoopCount = loopCount;
     }
 }
+
+float mapSpeedToFrequency(int speed) {
+    if (speed <= 0) {
+        return 0.0; // Off
+    } else if (speed >= 100) {
+        return 5.0; // Maximum frequency
+    } else {
+        // Quadratic mapping
+        float rtn_speed = (1.0 / 5000.0) * speed * speed + (3.0 / 100.0) * speed;
+        return rtn_speed < 0.1 ? 0.1 : rtn_speed;
+    }
+}
+
 
 
 void setup() {
@@ -244,19 +263,16 @@ void runMainOperation() {
       }
       break;
     case 1:
-      loopCount = 0;
-      updateAllValues();
-      waveStartTime = setStartTimeForSineWave(frequency);
       easeToBasePosition();
       if (inBasePosition){
+        loopCount = 0;
+        isFirstCall = true;
         runningStage ++;
       }
       break;
       
     case 2:
-      // Run Loop stage until loopCount >= loopCap then move to case 3
-      // updatePositionCommand(waveStartTime,30,0,minPosition,maxPosition);
-      updatePositionCommand(waveStartTime,minPosition,maxPosition);
+      generateSineWave();
       if (loopCount > loopCap){
         runningStage ++;
       }
@@ -278,6 +294,14 @@ void runMainOperation() {
     default:
       break;
   }
+}
+
+
+
+void updateAllValues(){
+  minPosition = targetMinPosition;
+  maxPosition = targetMaxPosition;
+  frequency = targetFrequency;
 }
 
 
@@ -313,55 +337,67 @@ void easeToBasePosition() {
     }
 }
 
-// Global variables
+
+
+
+
+
+
+
+
+// Loop Counting Variables
 float prevSineWave = 2.0; // Initialize to a value outside the sine wave range
 const float minThreshold = -0.99; // Threshold close to the minimum value
 
-void updatePositionCommand(long startTime, int minValue, int maxValue) {
-    long currentTime = millis() - startTime;
-    // Calculate the phase
-    float phase = TWO_PI * frequency * currentTime / 1000.0;
-    // Calculate current sine wave value
-    float currentSineWave = sin(phase);
-    positionCommand = minValue + (maxValue - minValue) * (currentSineWave + 1) / 2;
-    // Detect passing the bottom of the wave (close to minimum value)
-    if (prevSineWave < minThreshold && currentSineWave >= minThreshold) {
-        loopCount++;
-    }
-    // Update prevSineWave for the next cycle
-    prevSineWave = currentSineWave;
+void generateSineWave() {
+
+  easeMinMaxValues();
+
+  if (targetFrequency != frequency) {
+    frequency = targetFrequency;
+  }
+
+  // Check if first call
+  if (isFirstCall) {
+    lastGenUpdateTime = millis();
+    phase = 3 * PI / 2; // Set phase to 3PI/2 to start at the minimum position
+    isFirstCall = false;
+  }
+
+  unsigned long currentTime = millis();
+  float timeElapsed = (currentTime - lastGenUpdateTime) / 1000.0; // Time in seconds
+  lastGenUpdateTime = currentTime;
+
+  // Calculate phase increment
+  float phaseIncrement = 2 * PI * frequency * timeElapsed;
+
+  // Update phase
+  phase += phaseIncrement;
+  if (phase > 2 * PI) {
+    phase -= 2 * PI; // Keep phase within a 0-2PI range
+  }
+
+  // Generate sine wave value
+  float sineVal = sin(phase);
+  // Scale and offset sine wave
+  long output = minPosition + (sineVal + 1) * (maxPosition - minPosition) / 2;
+
+  // Check for crossing the threshold
+  if (prevSineWave < minThreshold && sineVal >= minThreshold) {
+    loopCount++;
+  }
+  // Update prevSineWave for the next cycle
+  prevSineWave = sineVal;
+  positionCommand = output;
 }
 
-void updateAllValues(){
-  minPosition = targetMinPosition;
-  maxPosition = targetMaxPosition;
-  speed = targetSpeed;
-  frequency = mapSpeedToFrequency(speed);
-}
-
-
-// Function to set the start time for the sine wave
-// This function assumes that the sine wave should start at its minimum value
-long setStartTimeForSineWave(float fq) {
-    // Phase corresponding to the minimum of the sine wave
-    float initialPhase = -PI / 2; // Sine wave at its minimum
-    // Get the current time
-    long currentTime = millis();
-    // Adjust startTime so that the sine wave starts at its minimum
-    long calculatedStartTime = currentTime - (initialPhase / (TWO_PI * fq)) * 1000.0;
-    return calculatedStartTime;
-}
-
-
-float mapSpeedToFrequency(int speed) {
-    if (speed <= 0) {
-        return 0.0; // Off
-    } else if (speed >= 100) {
-        return 5.0; // Maximum frequency
-    } else {
-        // Quadratic mapping
-        float rtn_speed = (1.0 / 5000.0) * speed * speed + (3.0 / 100.0) * speed;
-        return rtn_speed < 0.1 ? 0.1 : rtn_speed;
+void easeMinMaxValues() {
+    static int lastEaseTime = 0;
+    int easeInterval = 10; //Ease Every 100ms
+    if(millis() - lastEaseTime >= easeInterval) {
+        minPosition += (targetMinPosition > minPosition) ? 10 : (targetMinPosition < minPosition) ? -10 : 0;
+        maxPosition += (targetMaxPosition > maxPosition) ? 10 : (targetMaxPosition < maxPosition) ? -10 : 0;
+        lastEaseTime = millis();
     }
 }
 
