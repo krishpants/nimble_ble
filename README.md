@@ -40,6 +40,6 @@ BLE communications will not appear in an OS bluetooth menu and there is no "Pair
 
 ## Change Log
 
-Known issues - Sliders not grabing well
-0.02 - Sin Gen Function changed - Value changes during motion now ease smoothly.
-0.01 - First Working
+Known issues - Sliders not grabing well\
+0.02 - Sin Gen Function changed - Value changes during motion now ease smoothly.\
+0.01 - First Working\
