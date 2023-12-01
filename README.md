@@ -14,6 +14,8 @@ Note: the Web Bluetooth API is not supported across all browsers. The only brows
 Note: If the hardware sketch is updated I will change the version on the React app and you will need to update your Nimble Controll module before you can reconnect.
 
 The current web app provides the following functionality:
+
+### Manual Mode:
 Range Slider - Controlls the top and bottom movement range
 Speed Slider - Sets the stroke speed
 Play/Pause
@@ -24,6 +26,9 @@ When paused the reciever will ease to the base position to limit slip off.
 
 If you want continuous stroking a delay of 0s can be used.
 ~~Note: currently perameters are only adjusted during the pause phase to avoid the reciever jumping location. Next step will be to work on real time adjustability of Speed and Range while keeping a smooth opperation.~~
+
+### Shuffle Mode:
+In shuffle mode all the setting split to set a MIN-MAX range for all the perameters. Each setting will be randomised after every loop.
 
 ## Advanced Usage:
 ESP Sketch
@@ -40,6 +45,6 @@ BLE communications will not appear in an OS bluetooth menu and there is no "Pair
 
 ## Change Log
 
-Known issues - Sliders not grabing well\
-0.02 - Sin Gen Function changed - Value changes during motion now ease smoothly.\
+0.02 (still compatable) - No HW Changes - Added some debouncing for the sliders. This means they will sort of update in real time with a small lag to prevent too much bt traffic.
+0.02 - Sin Gen Function changed - Value changes during motion now ease smoothly. \
 0.01 - First Working\
