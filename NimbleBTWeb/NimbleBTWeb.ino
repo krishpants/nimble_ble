@@ -15,9 +15,10 @@
 #define VERSION_CHARACTERISTIC_UUID "4ecc1cb6-38c4-46f5-aaf5-549285f46cf1"
 #define RUNSTAGE_CHARACTERISTIC_UUID "2e125644-ce12-4fbd-9589-596e544a4f17"
 #define LOOP_COUNT_CHARACTERISTIC_UUID "03f779e0-65b8-4dbf-a984-637d02b8c07c"
+#define ENCODER_CHARACTERISTIC_UUID "1a08f9e4-30b2-4d41-ad4e-330a1cc8311a"
 #define DEVICE_NAME "Nimble_BT"
 
-std::string HW_VERSION = "0.02";
+std::string HW_VERSION = "0.03";
 
 // Set By App
 bool running;
@@ -45,6 +46,9 @@ long positionCommand = 0;
 
 bool defaultsSet = false;
 
+// COntrols
+int encoderValue = 0;
+
 // Generate Sin Wave Version
 unsigned long lastGenUpdateTime;
 float phase = 0.0;
@@ -55,6 +59,7 @@ BLECharacteristic *pVersionCharacteristic;
 BLECharacteristic *pCharacteristic;
 BLECharacteristic *pRunstageCharacteristic;
 BLECharacteristic *pLoopCountCharacteristic;
+BLECharacteristic *pEncoderCharacteristic;
 BLEServer *pServer;
 BLEService *pService;
 
@@ -150,6 +155,19 @@ void updateLoopCount() {
     }
 }
 
+void sendEncoderValue() {
+    static int lastNotifiedEncoderValue = -1;
+    if(encoderValue != lastNotifiedEncoderValue) {
+        uint8_t data[2];
+        data[0] = (uint8_t) (encoderValue & 0xFF);
+        data[1] = (uint8_t) ((encoderValue >> 8) & 0xFF);
+
+        pEncoderCharacteristic->setValue(data, sizeof(data));
+        pEncoderCharacteristic->notify();
+        lastNotifiedEncoderValue = encoderValue;
+    }
+}
+
 float mapSpeedToFrequency(int speed) {
     if (speed <= 0) {
         return 0.0; // Off
@@ -189,6 +207,11 @@ void setup() {
                                 BLECharacteristic::PROPERTY_NOTIFY
                              );
   pLoopCountCharacteristic->addDescriptor(new BLE2902());
+  pEncoderCharacteristic = pService->createCharacteristic(
+                                ENCODER_CHARACTERISTIC_UUID,
+                                BLECharacteristic::PROPERTY_NOTIFY
+                             );
+  pEncoderCharacteristic->addDescriptor(new BLE2902());
   pVersionCharacteristic = pService->createCharacteristic(
                                 VERSION_CHARACTERISTIC_UUID,
                                 BLECharacteristic::PROPERTY_READ
@@ -229,6 +252,50 @@ void sinc_actuator_values(){
   actuator.airOut = airOut;
 }
 
+
+
+// Global variables
+long lastEncoderPosition = 0;  // Variable to store the last encoder position
+
+void updateEncoderValue() {
+    static unsigned long lastUpdateTime = 0;
+    long currentEncoderPosition = encoder.getCount();
+    
+    if (millis() - lastUpdateTime > 50) {  // 50ms debounce interval
+        if (currentEncoderPosition > lastEncoderPosition) {
+            if (encoderValue < 100) {  // Ensure encoderValue does not exceed 100
+                encoderValue+= 5;
+                sendEncoderValue();
+            }
+        } else if (currentEncoderPosition < lastEncoderPosition) {
+            if (encoderValue > 0) {  // Ensure encoderValue does not go below 0
+                encoderValue-= 5;
+                sendEncoderValue();
+            }
+        }
+        lastEncoderPosition = currentEncoderPosition;
+        lastUpdateTime = millis();
+    }
+}
+
+unsigned long encPreviousMillis = 0;
+void decreaseEncoderValueNonBlocking() {
+  return;
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - encPreviousMillis >= 2500) {
+    // save the last time the encoder was updated
+    encPreviousMillis = currentMillis;
+
+    if (encoderValue > 0) {
+      encoderValue-= 3;
+      sendEncoderValue();
+    }
+  }
+}
+
+
+
 void loop() {
   bt_status_led();
   if (!defaultsSet){
@@ -240,6 +307,7 @@ void loop() {
   runMainOperation();
   updateRunstage();
   updateLoopCount();
+  updateEncoderValue(); 
   if (!running){
     runningStage = 0;
   }
@@ -258,12 +326,14 @@ void runMainOperation() {
   switch (runningStage) {
     case 0:
       easeToBasePosition();
+      decreaseEncoderValueNonBlocking();
       if (running){
         runningStage ++;
       }
       break;
     case 1:
       easeToBasePosition();
+      decreaseEncoderValueNonBlocking();
       if (inBasePosition){
         loopCount = 0;
         isFirstCall = true;
@@ -286,6 +356,7 @@ void runMainOperation() {
     case 4:
       // remin here until millis() - stopTime > pauseTime and then move back to case 1
       easeToBasePosition();
+      decreaseEncoderValueNonBlocking();
       if (millis() - waveStopTime >= loopDelay){
         runningStage = 1;
       }

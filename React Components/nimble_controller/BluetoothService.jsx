@@ -74,7 +74,7 @@ const startNotifications = (characteristic,callback) => {
 
   return characteristic.startNotifications()
     .then(() => {
-      console.log('Notifications started');
+      console.log('Notifications have started');
     })
     .catch(error => {
       console.error('Error in starting notificationsx:', error);

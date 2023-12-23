@@ -42,21 +42,22 @@ const SpeedSlider = styled(ReactSlider)`
 `;
 
 
-const StrokeSpeedRangeSlider = ({speed,setSpeed,minSpeed,setMinSpeed}) => {
+const StrokeSpeedRangeSlider = ({maxSpeed,setMaxSpeed,minSpeed,setMinSpeed}) => {
 	const speedThumb = (props, state) => <div {...props}>{state.value[state.index]}%</div>;
 	const Track = (props, state) => <div {...props} index={state.index}></div>;
 	const handleSpeedSliderChange = (values) => {
         const [min, max] = values;
       	setMinSpeed(min)
-        setSpeed(max);
+        setMaxSpeed(max);
     };
 	return(
 		<div className='speedSliderWrapper'>
 		    <SpeedSlider
 		        min={0}
 		        max={100}
-		        defaultValue={[minSpeed,speed]} // Set to initial positions within your range
-		        renderTrack={Track}
+		        defaultValue={[minSpeed,maxSpeed]} // Set to initial positions within your range
+		        value={[minSpeed,maxSpeed]}
+                renderTrack={Track}
 		        renderThumb={speedThumb}
 		        orientation="vertical"
 		        onChange={handleSpeedSliderChange}

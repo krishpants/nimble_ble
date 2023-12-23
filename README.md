@@ -31,10 +31,11 @@ If you want continuous stroking a delay of 0s can be used.
 In shuffle mode all the setting split to set a MIN-MAX range for all the perameters. Each setting will be randomised after every loop.
 
 ## Advanced Usage:
-ESP Sketch
+### ESP Sketch
 Adjusting the lower part of the sketch is possible without changing the web app as long as the web app's communication structure does not need to be adjusted. If you need to change parts of the communication protocol then you will need to edit the react component. 
-React Component
-This is supplied as just a single file, you will need to serve this via a react app and set this up yourself and then render the component supplied as a startign point. You must also have HTTPS enabled even on local host as the Web Bluetooth API requires this before it will connect to devices.
+### React Component
+This is supplied as just components, you will need to serve this via a react app and set this up yourself and then render the component supplied as a startign point. You must also have HTTPS enabled even on local host as the Web Bluetooth API requires this before it will connect to devices.
+for the remote capability you will also need a socketio capable server.
 
 ## Trouble Shooting
 Some controll changes during motion may result in jumpy movements, this is on my priority fix list
