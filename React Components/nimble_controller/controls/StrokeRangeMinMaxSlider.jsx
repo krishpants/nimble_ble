@@ -31,7 +31,7 @@ const RangeSlider = styled(ReactSlider)`
         bottom: 0;
         width: 15px;
         margin-left: 12.5px;
-        background: #e566bc;
+        background: #ffa42b;
         border-radius: 5px;
     }
 `;

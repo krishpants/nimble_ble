@@ -13,7 +13,8 @@ const DelayCapButtons = ({
   minLoopCap,
   setMinLoopCap,
   maxLoopCap,
-  setMaxLoopCap
+  setMaxLoopCap,
+  cacheValues
 }) => {	
   return(
     <>
@@ -25,12 +26,12 @@ const DelayCapButtons = ({
         ) : (
         <div className='inputsWrapper'>
           <div className='inputPair delay'>
-            <input type='number' min='0' value={minLoopDelay/1000} onChange={e => setMinLoopDelay(e.target.value * 1000)}/>
-            <input type='number' min='0' value={maxLoopDelay/1000} onChange={e => setMaxLoopDelay(e.target.value * 1000)}/>
+            <input type='number' min='0' value={minLoopDelay/1000} onChange={e => { setMinLoopDelay(e.target.value * 1000); cacheValues(); }}/>
+            <input type='number' min='0' value={maxLoopDelay/1000} onChange={e => { setMaxLoopDelay(e.target.value * 1000); cacheValues(); }}/>
           </div>
           <div className='inputPair strokes'>
-            <input type='number' min='0' value={minLoopCap} onChange={e => setMinLoopCap(e.target.value * 1)}/>
-            <input type='number' min='0' value={maxLoopCap} onChange={e => setMaxLoopCap(e.target.value * 1)}/>
+            <input type='number' min='0' value={minLoopCap} onChange={e => { setMinLoopCap(e.target.value * 1); cacheValues(); }}/>
+            <input type='number' min='0' value={maxLoopCap} onChange={e => { setMaxLoopCap(e.target.value * 1); cacheValues(); }}/>
           </div>
         </div>
       )}

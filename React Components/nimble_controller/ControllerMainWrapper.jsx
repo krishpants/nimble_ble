@@ -8,10 +8,12 @@ import DisplayScreen from './controls/DisplayScreen.jsx'
 import AirButtons from './controls/AirButtons.jsx'
 import PlayShuffleButtons from './controls/PlayShuffleButtons.jsx'
 import DelayCapButtons from './controls/DelayCapButtons.jsx'
+import PercentageBar from './controls/PercentageBar.jsx'
 
 
 const ControllerMainWrapper = ({
   code,
+  encoderValue,
   remoteRoomId,
   controllerJoined,
   inputCode,
@@ -59,7 +61,9 @@ const ControllerMainWrapper = ({
   airIn,
   airOut,
   setAirIn,
-  setAirOut
+  setAirOut,
+  totalStrokes,
+  cacheValues
 }) => {
 	return(
 		<div className={`wrapper ${controllerJoined && !remoteRoomId && 'controlled'}`}>
@@ -82,6 +86,7 @@ const ControllerMainWrapper = ({
 
             ) : (
               <>
+              {shuffleMode ? (<PercentageBar value={encoderValue} />) : (null)}
               <div className='upper-wrapper'>
                 {!shuffleMode ? (
                   <StrokeRangeSlider 
@@ -134,6 +139,7 @@ const ControllerMainWrapper = ({
                   loopDelay={loopDelay}
                   airIn={airIn}
                   airOut={airOut}
+                  totalStrokes={totalStrokes}
                 />
                 {!shuffleMode ? (
                     <StrokeSpeedSlider 
@@ -174,6 +180,7 @@ const ControllerMainWrapper = ({
                   setMinLoopCap={setMinLoopCap}
                   maxLoopCap={maxLoopCap}
                   setMaxLoopCap={setMaxLoopCap}
+                  cacheValues={cacheValues}
                 />
 
                 <AirButtons 

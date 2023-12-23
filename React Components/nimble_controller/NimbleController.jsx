@@ -15,7 +15,7 @@ const NimbleController = () => {
 // ██████╔╝░░░██║░░░██║░░██║░░░██║░░░███████╗
 // ╚═════╝░░░░╚═╝░░░╚═╝░░╚═╝░░░╚═╝░░░╚══════╝
 
-    let COMPATABLE_HW_VERSION = "0.02";
+    let COMPATABLE_HW_VERSION = "0.03";
     //BT COMM VARIABLES
     const [bleCharacteristic, setBleCharacteristic] = useState(null);
     const [bleDevice, setBleDevice] = useState(null);
@@ -34,24 +34,152 @@ const NimbleController = () => {
     const [minPosition, setMinPosition] = useState(-500);
     const [maxPosition, setMaxPosition] = useState(500);
     const [loopCap, setLoopCap] = useState(15);
-    const [loopDelay, setLoopDelay] = useState(5000);
+    const [loopDelay, setLoopDelay] = useState(10000);
     const [airIn, setAirIn] = useState(false);
     const [airOut, setAirOut] = useState(false);
     // Fed Back Variables
     const [loopCount, setLoopCount] = useState(0);
     const [runStage, setRunStage] = useState(0);
+    const [encoderValue,setEncoderValue] = useState(50);
     // Shuffle Mode Control Variables
     const [shuffleMode, setShuffleMode] = useState(false);
+
     const [maxSpeed, setMaxSpeed] = useState(speed);
     const [minSpeed, setMinSpeed] = useState(speed-30);
     const [minPositionLower, setMinPositionLower] = useState(minPosition);
     const [minPositionUpper, setMinPositionUpper] = useState(null);
     const [maxPositionLower, setMaxPositionLower] = useState(null);
     const [maxPositionUpper, setMaxPositionUpper] = useState(maxPosition);
-    const [minLoopDelay, setMinLoopDelay] = useState(0);
+    const [minLoopDelay, setMinLoopDelay] = useState(loopDelay/2);
     const [maxLoopDelay, setMaxLoopDelay] = useState(loopDelay);
     const [minLoopCap, setMinLoopCap] = useState(5);
     const [maxLoopCap, setMaxLoopCap] = useState(loopCap);
+
+    const [cachedState, setCachedState] = useState({
+      maxSpeed,
+      minSpeed,
+      minPositionLower,
+      minPositionUpper,
+      maxPositionLower,
+      maxPositionUpper,
+      minLoopDelay,
+      maxLoopDelay,
+      minLoopCap,
+      maxLoopCap,
+    });
+
+    const cacheValues = () => {
+      setCachedState({
+        maxSpeed,
+        minSpeed,
+        minPositionLower,
+        minPositionUpper,
+        maxPositionLower,
+        maxPositionUpper,
+        minLoopDelay,
+        maxLoopDelay,
+        minLoopCap,
+        maxLoopCap,
+      });
+      setEncoderValue(50);
+    };
+
+    // Other
+    const [totalStrokes,setTotalStrokes] = useState(0);
+
+      const [valueChanged, setValueChanged] = useState(false);
+
+      useEffect(() => {
+        let timer;
+
+        if (encoderValue !== 50 && encoderValue > 40 && encoderValue < 60) {
+          if (!valueChanged) {
+            // Start the timer when the value changes to a valid range
+            timer = setTimeout(() => {
+              // If the value remains in the valid range for 1 second, snap it back to 50
+              setEncoderValue(50);
+              setValueChanged(false); // Reset the flag
+            }, 1000);
+          }
+          setValueChanged(true);
+        } else {
+          clearTimeout(timer); // Clear the timer if the value goes out of the valid range
+          setValueChanged(false); // Reset the flag
+        }
+
+        return () => {
+          clearTimeout(timer); // Clean up the timer when the component unmounts or the dependency changes
+        };
+      }, [encoderValue]);
+
+useEffect(() => {
+  const basePosition = 50;
+  const minEncoderValue = 0;
+  const maxEncoderValue = 100;
+
+  const scaleValue = (value, minValue, maxValue, targetMin, targetMax) => {
+    return (
+      ((value - minValue) / (maxValue - minValue)) * (targetMax - targetMin) + targetMin
+    );
+  };
+
+  const originalMinLoopDelay = cachedState.minLoopDelay;
+  const originalMaxLoopDelay = cachedState.maxLoopDelay;
+
+  const originalMinLoopCap = cachedState.minLoopCap;
+  const originalMaxLoopCap = cachedState.maxLoopCap;
+
+  let scaledMinLoopDelay, scaledMaxLoopDelay;
+  let scaledMinLoopCap, scaledMaxLoopCap;
+
+  if (encoderValue < basePosition - 9) {
+    scaledMinLoopDelay = scaleValue(encoderValue, minEncoderValue, basePosition, 2 * originalMinLoopDelay, originalMinLoopDelay);
+    scaledMaxLoopDelay = scaleValue(encoderValue, minEncoderValue, basePosition, 3 * originalMaxLoopDelay, originalMaxLoopDelay);
+  } else if (encoderValue > basePosition + 9) {
+    scaledMinLoopDelay = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMinLoopDelay, 0);
+    scaledMaxLoopDelay = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMaxLoopDelay, 1000);
+  } else {
+    scaledMinLoopDelay = originalMinLoopDelay;
+    scaledMaxLoopDelay = originalMaxLoopDelay;
+  }
+
+    if (encoderValue < basePosition - 9) {
+        scaledMinLoopCap = originalMinLoopCap;
+        scaledMaxLoopCap = originalMaxLoopCap;
+        // scaledMinLoopCap = scaleValue(encoderValue, minEncoderValue, basePosition, originalMinLoopCap, originalMinLoopCap / 2);
+        // scaledMaxLoopCap = scaleValue(encoderValue, minEncoderValue, basePosition, originalMaxLoopCap, originalMaxLoopCap / 2);
+    } else if (encoderValue > basePosition + 9) {
+        scaledMinLoopCap = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMinLoopCap / 2, originalMinLoopCap * 3);
+        scaledMaxLoopCap = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMaxLoopCap / 2, originalMaxLoopCap * 3);
+      } else {
+            scaledMinLoopCap = originalMinLoopCap;
+            scaledMaxLoopCap = originalMaxLoopCap;
+      }
+
+  setMinLoopDelay(Math.round(scaledMinLoopDelay / 1000) * 1000);
+  setMaxLoopDelay(Math.round(scaledMaxLoopDelay / 1000) * 1000);
+  setMinLoopCap(Math.round(scaledMinLoopCap));
+  setMaxLoopCap(Math.round(scaledMaxLoopCap));
+}, [encoderValue]);
+
+
+
+    useEffect(() => {
+    }, [encoderValue]);
+
+
+
+
+
+
+
+    useEffect(() => {
+        if (loopCount > 0 && loopCount <= loopCap){
+            setTotalStrokes(totalStrokes + 1)
+        }
+    }, [loopCount]);
+
+    
 
     useEffect(() => {
         socket.current = io({
@@ -94,15 +222,15 @@ const NimbleController = () => {
             }
         });
 
-        // socket.current.on('updateRunStage', (data) => {
-        //   console.log(is_controller())
-        //   if (is_controller()){
-        //     setRunStage(data.runStage)
-        //   }
-        // });
+        socket.current.on('updateRunStage', (data) => {
+          console.log(is_controller())
+          if (is_controller()){
+            setRunStage(data.runStage)
+          }
+        });
 
         return () => {
-            // socket.current.off('updateRunStage');
+            socket.current.off('updateRunStage');
             socket.current.off('receiveCommand');
             socket.current.off('controllerJoined');
             socket.current.off('nimbleDisconnect');
@@ -180,11 +308,12 @@ const NimbleController = () => {
 
     useEffect(() => {
       if (runStage == 4 && shuffleMode){
-        shuffleVariables();
+        // shuffleVariables();
+        shuffleVariablesWithEncoder();
       }
-      // if (controllerJoined){
-      //   socket.current.emit('sendRunStage', runStage);
-      // }
+      if (controllerJoined && (runStage == 4 || runStage == 2)){
+        socket.current.emit('sendRunStage', runStage);
+      }
     }, [runStage]);   
 
     //Set Speed to maxSpeed (for use when shuffle is off)
@@ -303,22 +432,58 @@ const NimbleController = () => {
         setBleCharacteristic, 
         setBleDevice, 
         setVersionMismatch, 
-        setRunStage, 
-        setLoopCount, 
+        setRunStage,
+        setLoopCount,
+        setEncoderValue, 
         COMPATABLE_HW_VERSION
       );
     };
 
-    const shuffleVariables = () => {
-      setHoldUpdate(true);
-      setSpeed(getRandomBetween(minSpeed,maxSpeed))
-      setLoopDelay(getRandomBetween(minLoopDelay,maxLoopDelay))
-      setLoopCap(getRandomBetween(minLoopCap,maxLoopCap))
-      const mm_vals = [getRandomBetween(minPositionLower,minPositionUpper),getRandomBetween(maxPositionLower,maxPositionUpper)]
-      setMinPosition(Math.min(...mm_vals))
-      setMaxPosition(Math.max(...mm_vals))
-      setHoldUpdate(false);
-    }
+    // const shuffleVariables = () => {
+    //   setHoldUpdate(true);
+    //   setSpeed(getRandomBetween(minSpeed,maxSpeed))
+    //   setLoopDelay(getRandomBetween(minLoopDelay,maxLoopDelay))
+    //   setLoopCap(getRandomBetween(minLoopCap,maxLoopCap))
+    //   const mm_vals = [getRandomBetween(minPositionLower,minPositionUpper),getRandomBetween(maxPositionLower,maxPositionUpper)]
+    //   setMinPosition(Math.min(...mm_vals))
+    //   setMaxPosition(Math.max(...mm_vals))
+    //   setHoldUpdate(false);
+    // }
+
+    const shuffleVariablesWithEncoder = () => {
+        setHoldUpdate(true);
+
+        // Define quartiles for loopCap and loopDelay
+        const loopCapQuartile = Math.floor((maxLoopCap - minLoopCap) / 4);
+        const loopDelayQuartile = Math.floor((maxLoopDelay - minLoopDelay) / 4);
+
+        // Adjust loopCap and loopDelay based on encoderValue
+        if (encoderValue < 20) {
+            setLoopCap(getRandomBetween(minLoopCap + loopCapQuartile * 2, maxLoopCap));
+            setLoopDelay(getRandomBetween(minLoopDelay, minLoopDelay + loopDelayQuartile));
+        } else if (encoderValue < 50) {
+            setLoopCap(getRandomBetween(minLoopCap + loopCapQuartile * 2, maxLoopCap));
+            setLoopDelay(getRandomBetween(minLoopDelay + loopDelayQuartile, minLoopDelay + loopDelayQuartile * 3));
+        } else if (encoderValue < 70) {
+            setLoopCap(getRandomBetween(minLoopCap + loopCapQuartile, minLoopCap + loopCapQuartile * 3));
+            setLoopDelay(getRandomBetween(minLoopDelay + loopDelayQuartile * 2, minLoopDelay + loopDelayQuartile * 3));
+        } else if (encoderValue < 90) {
+            setLoopCap(getRandomBetween(minLoopCap, minLoopCap + loopCapQuartile * 2));
+            setLoopDelay(getRandomBetween(minLoopDelay + loopDelayQuartile * 2, maxLoopDelay));
+        } else {
+            setLoopCap(getRandomBetween(minLoopCap, minLoopCap + loopCapQuartile * 2));
+            setLoopDelay(getRandomBetween(minLoopDelay + loopDelayQuartile * 3, maxLoopDelay));
+        }
+
+        // Randomize other variables
+        setSpeed(getRandomBetween(minSpeed, maxSpeed));
+        const mm_vals = [getRandomBetween(minPositionLower, minPositionUpper), getRandomBetween(maxPositionLower, maxPositionUpper)];
+        setMinPosition(Math.min(...mm_vals));
+        setMaxPosition(Math.max(...mm_vals));
+
+        setHoldUpdate(false);
+    };
+
 
     const getRandomBetween = (min, max) => {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -334,9 +499,9 @@ const NimbleController = () => {
 
     return (
         <div id='NimbleController'>
-          {remoteRoomId}
           <ControllerMainWrapper
             code={code}
+            encoderValue={encoderValue}
             inputCode={inputCode}
             setInputCode={setInputCode}
             handleJoinRoom={handleJoinRoom}
@@ -385,6 +550,8 @@ const NimbleController = () => {
             airOut={airOut}
             setAirIn={setAirIn}
             setAirOut={setAirOut}
+            totalStrokes={totalStrokes}
+            cacheValues={cacheValues}
           />
         </div>
     );

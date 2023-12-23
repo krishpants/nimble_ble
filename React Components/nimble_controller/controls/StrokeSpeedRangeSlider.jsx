@@ -36,7 +36,7 @@ const SpeedSlider = styled(ReactSlider)`
         bottom: 0;
         width: 30px;
         margin-left: 25px;
-        background: #4c81ed;
+        background: #a27df4;
         border-radius: 5px;
     }
 `;

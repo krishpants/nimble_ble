@@ -6,7 +6,8 @@ const ConnectBluetooth = async (
   setBleDevice, 
   setVersionMismatch, 
   setRunStage, 
-  setLoopCount, 
+  setLoopCount,
+  setEncoderValue,
   COMPATABLE_HW_VERSION
 ) => {
       console.log(typeof setConnecting);
@@ -22,7 +23,8 @@ const ConnectBluetooth = async (
         const CHARACTERISTIC_UUID = "48b98d5e-9bdd-412a-9b1b-92dcb593c313";
         const VERSION_CHARACTERISTIC_UUID = "4ecc1cb6-38c4-46f5-aaf5-549285f46cf1";
         const RUNSTAGE_CHARACTERISTIC_UUID = "2e125644-ce12-4fbd-9589-596e544a4f17";
-        const LOOP_COUNT_CHARACTERISTIC_UUID = "03f779e0-65b8-4dbf-a984-637d02b8c07c"
+        const LOOP_COUNT_CHARACTERISTIC_UUID = "03f779e0-65b8-4dbf-a984-637d02b8c07c";
+        const ENCODER_CHARACTERISTIC_UUID = "1a08f9e4-30b2-4d41-ad4e-330a1cc8311a"
 
         // Request the Bluetooth device
         let retrievedDevice = await navigator.bluetooth.requestDevice({
@@ -49,9 +51,11 @@ const ConnectBluetooth = async (
         let retrievedCharacteristic = await bleService.getCharacteristic(CHARACTERISTIC_UUID);
         let runStageCharacteristic = await bleService.getCharacteristic(RUNSTAGE_CHARACTERISTIC_UUID);
         let loopCountCharacteristic = await bleService.getCharacteristic(LOOP_COUNT_CHARACTERISTIC_UUID);
+        let encoderCharacteristic = await bleService.getCharacteristic(ENCODER_CHARACTERISTIC_UUID);
 
         startNotifications(runStageCharacteristic,setRunStage)
         startNotifications(loopCountCharacteristic,setLoopCount)
+        startNotifications(encoderCharacteristic,setEncoderValue)
 
         console.log('Connected to GATT Server and found the characteristic');
         setBleCharacteristic(retrievedCharacteristic);
