@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState,useEffect,useCallback } from 'react';
 
 const ConnectBluetooth = async (
   setConnecting, 
@@ -8,9 +8,10 @@ const ConnectBluetooth = async (
   setRunStage, 
   setLoopCount,
   setEncoderValue,
+  handleEncoderChange,
+  setButtonValue,
   COMPATABLE_HW_VERSION
 ) => {
-      console.log(typeof setConnecting);
       setConnecting(true);
       let bleDevice;
       let bleServer;
@@ -24,7 +25,8 @@ const ConnectBluetooth = async (
         const VERSION_CHARACTERISTIC_UUID = "4ecc1cb6-38c4-46f5-aaf5-549285f46cf1";
         const RUNSTAGE_CHARACTERISTIC_UUID = "2e125644-ce12-4fbd-9589-596e544a4f17";
         const LOOP_COUNT_CHARACTERISTIC_UUID = "03f779e0-65b8-4dbf-a984-637d02b8c07c";
-        const ENCODER_CHARACTERISTIC_UUID = "1a08f9e4-30b2-4d41-ad4e-330a1cc8311a"
+        const ENCODER_CHARACTERISTIC_UUID = "1a08f9e4-30b2-4d41-ad4e-330a1cc8311a";
+        const BUTTON_CHARACTERISTIC_UUID = "1997a6f1-8ab7-4036-82e4-a198e6dfcc52";
 
         // Request the Bluetooth device
         let retrievedDevice = await navigator.bluetooth.requestDevice({
@@ -52,10 +54,12 @@ const ConnectBluetooth = async (
         let runStageCharacteristic = await bleService.getCharacteristic(RUNSTAGE_CHARACTERISTIC_UUID);
         let loopCountCharacteristic = await bleService.getCharacteristic(LOOP_COUNT_CHARACTERISTIC_UUID);
         let encoderCharacteristic = await bleService.getCharacteristic(ENCODER_CHARACTERISTIC_UUID);
+        let buttonCharacteristic = await bleService.getCharacteristic(BUTTON_CHARACTERISTIC_UUID);
 
-        startNotifications(runStageCharacteristic,setRunStage)
-        startNotifications(loopCountCharacteristic,setLoopCount)
-        startNotifications(encoderCharacteristic,setEncoderValue)
+        startNotifications(runStageCharacteristic,'int',setRunStage)
+        startNotifications(loopCountCharacteristic,'int',setLoopCount)
+        startNotifications(encoderCharacteristic,'string',handleEncoderChange)
+        startNotifications(buttonCharacteristic,'int',setButtonValue)
 
         console.log('Connected to GATT Server and found the characteristic');
         setBleCharacteristic(retrievedCharacteristic);
@@ -68,12 +72,21 @@ const ConnectBluetooth = async (
       }
     }
 
-const startNotifications = (characteristic,callback) => {
+const startNotifications = (characteristic, dataType, callback) => {
   console.log('Starting notifications...');
   characteristic.addEventListener('characteristicvaluechanged', (event) => {
     const value = event.target.value;
-    let intValue = value.getInt8(0);
-    callback(intValue);
+    let data;
+
+    if (dataType === 'int') {
+      data = value.getInt8(0);
+    } else if (dataType === 'string') {
+      data = new TextDecoder().decode(value);
+    } else {
+      console.error('Unsupported data type:', dataType);
+      return;
+    }
+    callback(data);
   });
 
   return characteristic.startNotifications()
@@ -81,8 +94,9 @@ const startNotifications = (characteristic,callback) => {
       console.log('Notifications have started');
     })
     .catch(error => {
-      console.error('Error in starting notificationsx:', error);
+      console.error('Error in starting notifications:', error);
     });
 };
+
 
 export default ConnectBluetooth;

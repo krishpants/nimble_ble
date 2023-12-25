@@ -1,4 +1,4 @@
-import React, { useState,useEffect,useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ConnectBluetooth from './BluetoothService.jsx'
 import ControllerMainWrapper from './ControllerMainWrapper.jsx'
 import { useGlobalState } from '../global_utilities/GlobalStateContext.jsx';
@@ -15,7 +15,7 @@ const NimbleController = () => {
 // ██████╔╝░░░██║░░░██║░░██║░░░██║░░░███████╗
 // ╚═════╝░░░░╚═╝░░░╚═╝░░╚═╝░░░╚═╝░░░╚══════╝
 
-    let COMPATABLE_HW_VERSION = "0.03";
+    let COMPATABLE_HW_VERSION = "0.04";
     //BT COMM VARIABLES
     const [bleCharacteristic, setBleCharacteristic] = useState(null);
     const [bleDevice, setBleDevice] = useState(null);
@@ -41,6 +41,8 @@ const NimbleController = () => {
     const [loopCount, setLoopCount] = useState(0);
     const [runStage, setRunStage] = useState(0);
     const [encoderValue,setEncoderValue] = useState(50);
+    const [buttonValue,setButtonValue] = useState(false);
+    
     // Shuffle Mode Control Variables
     const [shuffleMode, setShuffleMode] = useState(false);
 
@@ -86,12 +88,24 @@ const NimbleController = () => {
 
     // Other
     const [totalStrokes,setTotalStrokes] = useState(0);
+    const [valueChanged, setValueChanged] = useState(false);
 
-      const [valueChanged, setValueChanged] = useState(false);
+    
+      // Create a memoized version of handleEncoderChange
+      const handleEncoderChange = useCallback((change) => {
+          setEncoderValue((prevEncoderValue) => {
+            let newEncoderValue;
+            if (change === "up") {
+              newEncoderValue = prevEncoderValue + 5;
+            } else if (change === "down") {
+              newEncoderValue = prevEncoderValue - 5;
+            }
+            return Math.min(Math.max(newEncoderValue, 0), 100);
+          });
+      }, [shuffleMode]); // Include shuffleMode as a dependency
 
       useEffect(() => {
         let timer;
-
         if (encoderValue !== 50 && encoderValue > 40 && encoderValue < 60) {
           if (!valueChanged) {
             // Start the timer when the value changes to a valid range
@@ -106,66 +120,68 @@ const NimbleController = () => {
           clearTimeout(timer); // Clear the timer if the value goes out of the valid range
           setValueChanged(false); // Reset the flag
         }
-
         return () => {
           clearTimeout(timer); // Clean up the timer when the component unmounts or the dependency changes
         };
       }, [encoderValue]);
 
-useEffect(() => {
-  const basePosition = 50;
-  const minEncoderValue = 0;
-  const maxEncoderValue = 100;
+    useEffect(() => {
+      const basePosition = 50;
+      const minEncoderValue = 0;
+      const maxEncoderValue = 100;
 
-  const scaleValue = (value, minValue, maxValue, targetMin, targetMax) => {
-    return (
-      ((value - minValue) / (maxValue - minValue)) * (targetMax - targetMin) + targetMin
-    );
-  };
+      const scaleValue = (value, minValue, maxValue, targetMin, targetMax) => {
+        return (
+          ((value - minValue) / (maxValue - minValue)) * (targetMax - targetMin) + targetMin
+        );
+      };
 
-  const originalMinLoopDelay = cachedState.minLoopDelay;
-  const originalMaxLoopDelay = cachedState.maxLoopDelay;
+      const originalMinLoopDelay = cachedState.minLoopDelay;
+      const originalMaxLoopDelay = cachedState.maxLoopDelay;
 
-  const originalMinLoopCap = cachedState.minLoopCap;
-  const originalMaxLoopCap = cachedState.maxLoopCap;
+      const originalMinLoopCap = cachedState.minLoopCap;
+      const originalMaxLoopCap = cachedState.maxLoopCap;
 
-  let scaledMinLoopDelay, scaledMaxLoopDelay;
-  let scaledMinLoopCap, scaledMaxLoopCap;
+      let scaledMinLoopDelay, scaledMaxLoopDelay;
+      let scaledMinLoopCap, scaledMaxLoopCap;
 
-  if (encoderValue < basePosition - 9) {
-    scaledMinLoopDelay = scaleValue(encoderValue, minEncoderValue, basePosition, 2 * originalMinLoopDelay, originalMinLoopDelay);
-    scaledMaxLoopDelay = scaleValue(encoderValue, minEncoderValue, basePosition, 3 * originalMaxLoopDelay, originalMaxLoopDelay);
-  } else if (encoderValue > basePosition + 9) {
-    scaledMinLoopDelay = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMinLoopDelay, 0);
-    scaledMaxLoopDelay = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMaxLoopDelay, 1000);
-  } else {
-    scaledMinLoopDelay = originalMinLoopDelay;
-    scaledMaxLoopDelay = originalMaxLoopDelay;
-  }
-
-    if (encoderValue < basePosition - 9) {
-        scaledMinLoopCap = originalMinLoopCap;
-        scaledMaxLoopCap = originalMaxLoopCap;
-        // scaledMinLoopCap = scaleValue(encoderValue, minEncoderValue, basePosition, originalMinLoopCap, originalMinLoopCap / 2);
-        // scaledMaxLoopCap = scaleValue(encoderValue, minEncoderValue, basePosition, originalMaxLoopCap, originalMaxLoopCap / 2);
-    } else if (encoderValue > basePosition + 9) {
-        scaledMinLoopCap = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMinLoopCap / 2, originalMinLoopCap * 3);
-        scaledMaxLoopCap = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMaxLoopCap / 2, originalMaxLoopCap * 3);
+      if (encoderValue < basePosition - 9) {
+        scaledMinLoopDelay = scaleValue(encoderValue, minEncoderValue, basePosition, 2 * originalMinLoopDelay, originalMinLoopDelay);
+        scaledMaxLoopDelay = scaleValue(encoderValue, minEncoderValue, basePosition, 3 * originalMaxLoopDelay, originalMaxLoopDelay);
+      } else if (encoderValue > basePosition + 9) {
+        scaledMinLoopDelay = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMinLoopDelay, 0);
+        scaledMaxLoopDelay = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMaxLoopDelay, 1000);
       } else {
-            scaledMinLoopCap = originalMinLoopCap;
-            scaledMaxLoopCap = originalMaxLoopCap;
+        scaledMinLoopDelay = originalMinLoopDelay;
+        scaledMaxLoopDelay = originalMaxLoopDelay;
       }
 
-  setMinLoopDelay(Math.round(scaledMinLoopDelay / 1000) * 1000);
-  setMaxLoopDelay(Math.round(scaledMaxLoopDelay / 1000) * 1000);
-  setMinLoopCap(Math.round(scaledMinLoopCap));
-  setMaxLoopCap(Math.round(scaledMaxLoopCap));
-}, [encoderValue]);
+        if (encoderValue < basePosition - 9) {
+            scaledMinLoopCap = originalMinLoopCap;
+            scaledMaxLoopCap = originalMaxLoopCap;
+            // scaledMinLoopCap = scaleValue(encoderValue, minEncoderValue, basePosition, originalMinLoopCap, originalMinLoopCap / 2);
+            // scaledMaxLoopCap = scaleValue(encoderValue, minEncoderValue, basePosition, originalMaxLoopCap, originalMaxLoopCap / 2);
+        } else if (encoderValue > basePosition + 9) {
+            scaledMinLoopCap = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMinLoopCap / 2, originalMinLoopCap * 3);
+            scaledMaxLoopCap = scaleValue(encoderValue, basePosition, maxEncoderValue, originalMaxLoopCap / 2, originalMaxLoopCap * 3);
+          } else {
+                scaledMinLoopCap = originalMinLoopCap;
+                scaledMaxLoopCap = originalMaxLoopCap;
+          }
+
+      setMinLoopDelay(Math.round(scaledMinLoopDelay / 1000) * 1000);
+      setMaxLoopDelay(Math.round(scaledMaxLoopDelay / 1000) * 1000);
+      setMinLoopCap(Math.round(scaledMinLoopCap));
+      setMaxLoopCap(Math.round(scaledMaxLoopCap));
+    }, [encoderValue]);
 
 
 
     useEffect(() => {
-    }, [encoderValue]);
+        if (buttonValue === 0){
+            setRunning(!running)
+        }
+    }, [buttonValue]);
 
 
 
@@ -223,7 +239,6 @@ useEffect(() => {
         });
 
         socket.current.on('updateRunStage', (data) => {
-          console.log(is_controller())
           if (is_controller()){
             setRunStage(data.runStage)
           }
@@ -434,7 +449,9 @@ useEffect(() => {
         setVersionMismatch, 
         setRunStage,
         setLoopCount,
-        setEncoderValue, 
+        setEncoderValue,
+        handleEncoderChange,
+        setButtonValue,
         COMPATABLE_HW_VERSION
       );
     };

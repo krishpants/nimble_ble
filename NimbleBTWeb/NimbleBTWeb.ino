@@ -10,15 +10,16 @@
 #include <BLE2902.h>
 
 // Define UUIDs for BLE service and characteristic
-#define SERVICE_UUID "8143e16b-5798-407d-9535-c8f93fc37368"  // New UUID
+#define SERVICE_UUID "8143e16b-5798-407d-9535-c8f93fc37368"
 #define CHARACTERISTIC_UUID "48b98d5e-9bdd-412a-9b1b-92dcb593c313"
 #define VERSION_CHARACTERISTIC_UUID "4ecc1cb6-38c4-46f5-aaf5-549285f46cf1"
 #define RUNSTAGE_CHARACTERISTIC_UUID "2e125644-ce12-4fbd-9589-596e544a4f17"
 #define LOOP_COUNT_CHARACTERISTIC_UUID "03f779e0-65b8-4dbf-a984-637d02b8c07c"
 #define ENCODER_CHARACTERISTIC_UUID "1a08f9e4-30b2-4d41-ad4e-330a1cc8311a"
+#define BUTTON_CHARACTERISTIC_UUID "1997a6f1-8ab7-4036-82e4-a198e6dfcc52"
 #define DEVICE_NAME "Nimble_BT"
 
-std::string HW_VERSION = "0.03";
+std::string HW_VERSION = "0.04";
 
 // Set By App
 bool running;
@@ -46,8 +47,9 @@ long positionCommand = 0;
 
 bool defaultsSet = false;
 
-// COntrols
+// Controls
 int encoderValue = 0;
+int buttonValue = 0;
 
 // Generate Sin Wave Version
 unsigned long lastGenUpdateTime;
@@ -60,6 +62,7 @@ BLECharacteristic *pCharacteristic;
 BLECharacteristic *pRunstageCharacteristic;
 BLECharacteristic *pLoopCountCharacteristic;
 BLECharacteristic *pEncoderCharacteristic;
+BLECharacteristic *pButtonCharacteristic;
 BLEServer *pServer;
 BLEService *pService;
 
@@ -168,6 +171,19 @@ void sendEncoderValue() {
     }
 }
 
+void sendButtonValue() {
+    static int lastNotifiedButtonValue = -1;
+    if(buttonValue != lastNotifiedButtonValue) {
+        uint8_t data[2];
+        data[0] = (uint8_t) (buttonValue & 0xFF);
+        data[1] = (uint8_t) ((buttonValue >> 8) & 0xFF);
+
+        pButtonCharacteristic->setValue(data, sizeof(data));
+        pButtonCharacteristic->notify();
+        lastNotifiedButtonValue = buttonValue;
+    }
+}
+
 float mapSpeedToFrequency(int speed) {
     if (speed <= 0) {
         return 0.0; // Off
@@ -188,7 +204,12 @@ void setup() {
   BLEDevice::init(DEVICE_NAME);
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
-  pService = pServer->createService(SERVICE_UUID);
+  pService = pServer->createService(BLEUUID(SERVICE_UUID), 30, 0);
+  pVersionCharacteristic = pService->createCharacteristic(
+                                VERSION_CHARACTERISTIC_UUID,
+                                BLECharacteristic::PROPERTY_READ
+                             );
+  pVersionCharacteristic->setValue(HW_VERSION);
   pCharacteristic = pService->createCharacteristic(
                       CHARACTERISTIC_UUID,
                       BLECharacteristic::PROPERTY_READ |
@@ -196,7 +217,6 @@ void setup() {
                     );
   pCharacteristic->addDescriptor(new BLE2902());
   pCharacteristic->setCallbacks(new MyCallbacks());
-  // Create a characteristic for runstage notifications
   pRunstageCharacteristic = pService->createCharacteristic(
                                 RUNSTAGE_CHARACTERISTIC_UUID,
                                 BLECharacteristic::PROPERTY_NOTIFY
@@ -207,16 +227,19 @@ void setup() {
                                 BLECharacteristic::PROPERTY_NOTIFY
                              );
   pLoopCountCharacteristic->addDescriptor(new BLE2902());
+
+  pButtonCharacteristic = pService->createCharacteristic(
+                                BUTTON_CHARACTERISTIC_UUID,
+                                BLECharacteristic::PROPERTY_NOTIFY
+                             );
+  pButtonCharacteristic->addDescriptor(new BLE2902());
+
   pEncoderCharacteristic = pService->createCharacteristic(
                                 ENCODER_CHARACTERISTIC_UUID,
                                 BLECharacteristic::PROPERTY_NOTIFY
                              );
   pEncoderCharacteristic->addDescriptor(new BLE2902());
-  pVersionCharacteristic = pService->createCharacteristic(
-                                VERSION_CHARACTERISTIC_UUID,
-                                BLECharacteristic::PROPERTY_READ
-                             );
-  pVersionCharacteristic->setValue(HW_VERSION);
+
   pService->start();
   pServer->getAdvertising()->start();
   Serial.println("Ready To Connect...");
@@ -253,30 +276,73 @@ void sinc_actuator_values(){
 }
 
 
+void updateButtonValue() {
+  static int lastButtonState = HIGH;
+  static unsigned long lastDebounceTime = 0;
+  int reading = digitalRead(ENC_BUTT);
 
-// Global variables
-long lastEncoderPosition = 0;  // Variable to store the last encoder position
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+
+  if ((millis() - lastDebounceTime) > 50) {
+    // Update button value only if it has been stable for debounceDelay time
+    if (reading != buttonValue) {
+      buttonValue = reading;
+      sendButtonValue(); // Call sendButtonValue only when the button state changes
+    }
+  }
+
+  lastButtonState = reading;
+}
 
 void updateEncoderValue() {
     static unsigned long lastUpdateTime = 0;
+    static unsigned long lastEncoderPosition = 0;
     long currentEncoderPosition = encoder.getCount();
     
     if (millis() - lastUpdateTime > 50) {  // 50ms debounce interval
         if (currentEncoderPosition > lastEncoderPosition) {
-            if (encoderValue < 100) {  // Ensure encoderValue does not exceed 100
-                encoderValue+= 5;
-                sendEncoderValue();
-            }
+            sendEncoderDirection("up");
         } else if (currentEncoderPosition < lastEncoderPosition) {
-            if (encoderValue > 0) {  // Ensure encoderValue does not go below 0
-                encoderValue-= 5;
-                sendEncoderValue();
-            }
+            sendEncoderDirection("down");
         }
         lastEncoderPosition = currentEncoderPosition;
         lastUpdateTime = millis();
     }
 }
+
+void sendEncoderDirection(const char* direction) {
+    static unsigned long lastUpdateTime = 0;
+    if (millis() - lastUpdateTime >= 100) {
+        pEncoderCharacteristic->setValue(direction);
+        pEncoderCharacteristic->notify();
+        lastUpdateTime = millis();
+    }
+}
+
+
+// void updateEncoderValue() {
+//     static unsigned long lastUpdateTime = 0;
+//     static unsigned long lastEncoderPosition = 0;
+//     long currentEncoderPosition = encoder.getCount();
+    
+//     if (millis() - lastUpdateTime > 50) {  // 50ms debounce interval
+//         if (currentEncoderPosition > lastEncoderPosition) {
+//             if (encoderValue < 100) {  // Ensure encoderValue does not exceed 100
+//                 encoderValue+= 5;
+//                 sendEncoderValue();
+//             }
+//         } else if (currentEncoderPosition < lastEncoderPosition) {
+//             if (encoderValue > 0) {  // Ensure encoderValue does not go below 0
+//                 encoderValue-= 5;
+//                 sendEncoderValue();
+//             }
+//         }
+//         lastEncoderPosition = currentEncoderPosition;
+//         lastUpdateTime = millis();
+//     }
+// }
 
 unsigned long encPreviousMillis = 0;
 void decreaseEncoderValueNonBlocking() {
@@ -308,6 +374,7 @@ void loop() {
   updateRunstage();
   updateLoopCount();
   updateEncoderValue(); 
+  updateButtonValue(); 
   if (!running){
     runningStage = 0;
   }
