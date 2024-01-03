@@ -9,9 +9,12 @@ import AirButtons from './controls/AirButtons.jsx'
 import PlayShuffleButtons from './controls/PlayShuffleButtons.jsx'
 import DelayCapButtons from './controls/DelayCapButtons.jsx'
 import PercentageBar from './controls/PercentageBar.jsx'
+import ModeSelector from './controls/ModeSelector.jsx'
 
 
 const ControllerMainWrapper = ({
+  showInfo,
+  setShowInfo,
   code,
   encoderValue,
   remoteRoomId,
@@ -24,8 +27,10 @@ const ControllerMainWrapper = ({
   isDeviceConnected,
   connecting,
   handleConnect,
-  shuffleMode,
-  setShuffleMode,
+  handleCycleMode,
+  modes,
+  selectedMode,
+  setSelectedMode,
   minPositionLower,
   setMinPositionLower,
   maxPositionUpper,
@@ -63,10 +68,19 @@ const ControllerMainWrapper = ({
   setAirIn,
   setAirOut,
   totalStrokes,
-  cacheValues
+  cacheValues,
+  rampInterval,
+  setRampInterval,
+  connectionIp,
+  setConnectionIp,
+  eomSpeed,
+  connectToEom,
+  eomConnecting,
+  eomConnected,
+  eomArousal
 }) => {
 	return(
-		<div className={`wrapper ${controllerJoined && !remoteRoomId && 'controlled'}`}>
+		<div className={`wrapper ${controllerJoined && !remoteRoomId && 'controlled'} ${showInfo && 'show_info'}`}>
             {versionMismatch ? (
               <div className='version_error'>Hardware Version does not match v{COMPATABLE_HW_VERSION}, flash latest version to your Nimble Control Module</div>
             ) : !remoteRoomId && !isDeviceConnected() ? (
@@ -82,13 +96,15 @@ const ControllerMainWrapper = ({
                   />
                   <button onClick={handleJoinRoom}>Remote Connect</button>
                 </div>
+                <div className='version_info'>HW: v{COMPATABLE_HW_VERSION}</div>
               </div>
 
             ) : (
               <>
-              {shuffleMode ? (<PercentageBar value={encoderValue} />) : (null)}
+              <ModeSelector modes={modes} selectedMode={selectedMode} setSelectedMode={setSelectedMode} />
+              {selectedMode == "shuffle" ? (<PercentageBar value={encoderValue} />) : (null)}
               <div className='upper-wrapper'>
-                {!shuffleMode ? (
+                {selectedMode != "shuffle" ? (
                   <StrokeRangeSlider 
                     minPosition={minPositionLower} 
                     setMinPosition={setMinPositionLower}
@@ -120,7 +136,7 @@ const ControllerMainWrapper = ({
                   remoteRoomId={remoteRoomId}
                   running={running}
                   runStage={runStage}
-                  shuffleMode={shuffleMode}
+                  selectedMode={selectedMode}
                   minLoopCap={minLoopCap}
                   maxLoopCap={maxLoopCap}
                   loopCap={loopCap}
@@ -140,11 +156,19 @@ const ControllerMainWrapper = ({
                   airIn={airIn}
                   airOut={airOut}
                   totalStrokes={totalStrokes}
+                  rampInterval={rampInterval}
+                  connectionIp={connectionIp}
+                  setConnectionIp={setConnectionIp}
+                  eomSpeed={eomSpeed}
+                  eomConnected={eomConnected}
+                  eomArousal={eomArousal}
                 />
-                {!shuffleMode ? (
+                {selectedMode != "shuffle" ? (
                     <StrokeSpeedSlider 
                       maxSpeed={maxSpeed}
                       setMaxSpeed={setMaxSpeed}
+                      selectedMode={selectedMode}
+                      speed={speed}
                     />
                   ) : (
                   <>
@@ -161,13 +185,13 @@ const ControllerMainWrapper = ({
                 <PlayShuffleButtons 
                   running={running}
                   setRunning={setRunning}
-                  shuffleMode={shuffleMode}
-                  setShuffleMode={setShuffleMode}
+                  selectedMode={selectedMode}
+                  handleCycleMode={handleCycleMode}
                   controllerJoined={controllerJoined}
                   remoteRoomId={remoteRoomId}
                 />
                 <DelayCapButtons
-                  shuffleMode={shuffleMode}
+                  selectedMode={selectedMode}
                   loopDelay={loopDelay}
                   setLoopDelay={setLoopDelay}
                   loopCap={loopCap}
@@ -181,8 +205,12 @@ const ControllerMainWrapper = ({
                   maxLoopCap={maxLoopCap}
                   setMaxLoopCap={setMaxLoopCap}
                   cacheValues={cacheValues}
+                  rampInterval={rampInterval}
+                  setRampInterval={setRampInterval}
+                  connectToEom={connectToEom}
+                  eomConnecting={eomConnecting}
+                  eomConnected={eomConnected}
                 />
-
                 <AirButtons 
                   airIn={airIn}
                   airOut={airOut}

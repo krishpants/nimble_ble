@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ConnectBluetooth from './BluetoothService.jsx'
+import WebSocketComponent from './WebSocketComponent.jsx'
 import ControllerMainWrapper from './ControllerMainWrapper.jsx'
 import { useGlobalState } from '../global_utilities/GlobalStateContext.jsx';
 import {generateCode} from './functions.js'
@@ -16,6 +17,7 @@ const NimbleController = () => {
 // ╚═════╝░░░░╚═╝░░░╚═╝░░╚═╝░░░╚═╝░░░╚══════╝
 
     let COMPATABLE_HW_VERSION = "0.04";
+    let modes = ['default','shuffle','StopGo','eom']
     //BT COMM VARIABLES
     const [bleCharacteristic, setBleCharacteristic] = useState(null);
     const [bleDevice, setBleDevice] = useState(null);
@@ -30,13 +32,15 @@ const NimbleController = () => {
     const [controllerJoined, setControllerJoined] = useState(false);
     //ESP STATE VARIABLES
     const [running, setRunning] = useState(false);
-    const [speed, setSpeed] = useState(50);
+    const [speed, setSpeed] = useState(50); // Range 0-100
     const [minPosition, setMinPosition] = useState(-500);
     const [maxPosition, setMaxPosition] = useState(500);
     const [loopCap, setLoopCap] = useState(15);
     const [loopDelay, setLoopDelay] = useState(10000);
     const [airIn, setAirIn] = useState(false);
     const [airOut, setAirOut] = useState(false);
+    // Misc
+    const [showInfo, setShowInfo] = useState(false);
     // Fed Back Variables
     const [loopCount, setLoopCount] = useState(0);
     const [runStage, setRunStage] = useState(0);
@@ -45,6 +49,21 @@ const NimbleController = () => {
     
     // Shuffle Mode Control Variables
     const [shuffleMode, setShuffleMode] = useState(false);
+    const [selectedMode, setSelectedMode] = useState('default');
+
+    // Stop&Go Mode Control Variables
+    const [rampInterval, setRampInterval] = useState(500);
+    const [lastSpeedIncrementTime, setLastSpeedIncrementTime] = useState(Date.now());
+
+    // EOM Variables
+    const [eomConnected, setEomConnected] = useState(false);
+    const [eomConnecting, setEomConnecting] = useState(false);
+    const [eomSpeed, setEomSpeed] = useState(0);
+    const [eomArousal, setEomArousal] = useState(0);
+        const [connectionIp, setConnectionIp] = useState(() => {
+        const savedIp = localStorage.getItem('connectionIp');
+        return savedIp || '192.168.0.5';
+    });
 
     const [maxSpeed, setMaxSpeed] = useState(speed);
     const [minSpeed, setMinSpeed] = useState(speed-30);
@@ -89,10 +108,21 @@ const NimbleController = () => {
     // Other
     const [totalStrokes,setTotalStrokes] = useState(0);
     const [valueChanged, setValueChanged] = useState(false);
-
     
       // Create a memoized version of handleEncoderChange
-      const handleEncoderChange = useCallback((change) => {
+      // const handleEncoderChange = useCallback((change) => {
+      //     setEncoderValue((prevEncoderValue) => {
+      //       let newEncoderValue;
+      //       if (change === "up") {
+      //         newEncoderValue = prevEncoderValue + 5;
+      //       } else if (change === "down") {
+      //         newEncoderValue = prevEncoderValue - 5;
+      //       }
+      //       return Math.min(Math.max(newEncoderValue, 0), 100);
+      //     });
+      // }, [shuffleMode]); // Include shuffleMode as a dependency
+
+      const handleEncoderChange = (change) => {
           setEncoderValue((prevEncoderValue) => {
             let newEncoderValue;
             if (change === "up") {
@@ -102,7 +132,7 @@ const NimbleController = () => {
             }
             return Math.min(Math.max(newEncoderValue, 0), 100);
           });
-      }, [shuffleMode]); // Include shuffleMode as a dependency
+      }; // Include shuffleMode as a dependency
 
       useEffect(() => {
         let timer;
@@ -178,7 +208,14 @@ const NimbleController = () => {
 
 
     useEffect(() => {
-        if (buttonValue === 0){
+        if (selectedMode === 'StopGo') {
+            if (buttonValue === 0){
+                setRunning(true)
+            } else {
+                setRunning(false)
+                setSpeed(maxSpeed)
+            }
+        } else if (buttonValue === 0){
             setRunning(!running)
         }
     }, [buttonValue]);
@@ -192,6 +229,13 @@ const NimbleController = () => {
     useEffect(() => {
         if (loopCount > 0 && loopCount <= loopCap){
             setTotalStrokes(totalStrokes + 1)
+        }
+        if (selectedMode === 'StopGo' && rampInterval > 0){
+            const currentTime = Date.now();
+            if (currentTime - lastSpeedIncrementTime >= rampInterval) {
+              setSpeed((prevSpeed) => Math.min(100, prevSpeed + 1));
+              setLastSpeedIncrementTime(currentTime);
+            }
         }
     }, [loopCount]);
 
@@ -223,7 +267,7 @@ const NimbleController = () => {
             processCommandString(command);
         });
         socket.current.on('controllerJoined', () => {
-            setShuffleMode(false);
+            setSelectedMode('default');
             setControllerJoined(true);
         });
         socket.current.on('nimbleDisconnect', (data) => {
@@ -322,7 +366,7 @@ const NimbleController = () => {
     }, [bleDevice]); 
 
     useEffect(() => {
-      if (runStage == 4 && shuffleMode){
+      if (runStage == 4 && selectedMode == 'shuffle'){
         // shuffleVariables();
         shuffleVariablesWithEncoder();
       }
@@ -356,10 +400,15 @@ const NimbleController = () => {
 
     //Set sensible values for second sliders when starting shuffle mode.
     useEffect(() => {
-        setMaxPositionLower(Math.max(maxPositionUpper-300,minPositionLower));
-        setMinPositionUpper(Math.min(minPositionLower+300,maxPositionUpper));
-        setMinSpeed(Math.max(speed-30,0))      
-    }, [shuffleMode]);
+        if (selectedMode == 'shuffle'){
+            setMaxPositionLower(Math.max(maxPositionUpper-300,minPositionLower));
+            setMinPositionUpper(Math.min(minPositionLower+300,maxPositionUpper));
+            setMinSpeed(Math.max(speed-30,0))
+        } else if (selectedMode == 'StopGo' || selectedMode == 'eom') {
+            setLoopCap(999)
+            setRunning(false)
+        } 
+    }, [selectedMode]);
 
 
 
@@ -431,6 +480,87 @@ const NimbleController = () => {
     function createCommandString() {
         return `${running?(1):(0)},${speed},${minPosition},${maxPosition},${loopCap},${loopDelay},${airIn?(1):(0)},${airOut?(1):(0)}`;
     }
+
+
+// ███████╗░█████╗░███╗░░░███╗██████╗░██╗░░██╗
+// ██╔════╝██╔══██╗████╗░████║╚════██╗██║░██╔╝
+// █████╗░░██║░░██║██╔████╔██║░█████╔╝█████═╝░
+// ██╔══╝░░██║░░██║██║╚██╔╝██║░╚═══██╗██╔═██╗░
+// ███████╗╚█████╔╝██║░╚═╝░██║██████╔╝██║░╚██╗
+// ╚══════╝░╚════╝░╚═╝░░░░░╚═╝╚═════╝░╚═╝░░╚═╝
+
+
+  useEffect(() => {
+      localStorage.setItem('connectionIp', connectionIp);
+  }, [connectionIp]);
+
+  const eomsocket = useRef(null);
+
+  const connectToEom = () => {
+    eomsocket.current = new WebSocket(`ws://${connectionIp}:80`);
+    setEomConnecting(true);
+    const connectionTimeout = 3000; // Timeout for establishing a connection
+    let connectionEstablished = false;
+
+    eomsocket.current.onopen = (event) => {
+      console.log('WebSocket connection opened:', event);
+      setEomConnected(true);
+      setConfirmMessages([...confirmMessages, `Connected to EOM on ip: ${connectionIp}`]);
+      connectionEstablished = true;
+      setEomConnecting(false);
+    };
+
+    eomsocket.current.onmessage = (event) => {
+      try {
+        var eventData = JSON.parse(event.data);
+        setEomSpeed(eventData.readings.motor);
+        setEomArousal(eventData.readings.arousal);
+      } catch (error) {
+        console.error('Error parsing event data:', error);
+        console.log('Received event:', event);
+      }
+    };
+
+    eomsocket.current.onclose = (event) => {
+      console.log('WebSocket connection closed:', event);
+      setEomConnected(false);
+    };
+
+    eomsocket.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    // Connection timeout check
+    setTimeout(() => {
+      if (!connectionEstablished) {
+        setEomConnecting(false);
+        setErrorMessages([...errorMessages, `Unable to connect to EOM on ip: ${connectionIp}`]);
+        eomsocket.current.close();
+      }
+    }, connectionTimeout);
+  }
+
+  const disconnectFromEom = () => {
+    console.log(eomsocket.current)
+    if (eomsocket.current !== null) {
+      eomsocket.current.close(); // Close the socket if it's open
+      eomsocket.current = null;
+    }
+    // Reset any relevant state variables here
+    setEomConnected(false);
+    setEomConnecting(false);
+    // ... any other state resets as needed ...
+  };        
+
+  useEffect(() => {
+      if (eomSpeed == 0){
+        setSpeed(0);
+        setRunning(false);
+      } else {
+        setSpeed(maxSpeed)
+        setRunning(true);
+      } 
+  }, [eomSpeed]);
 
 
 
@@ -506,6 +636,14 @@ const NimbleController = () => {
       return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
+    const handleCycleMode = () => {
+      const currentIndex = modes.indexOf(selectedMode);
+      const nextIndex = (currentIndex + 1) % modes.length;
+      setSelectedMode(modes[nextIndex]);
+      disconnectFromEom();
+    };
+
+
 
 // ██████╗░███████╗███╗░░██╗██████╗░███████╗██████╗░
 // ██╔══██╗██╔════╝████╗░██║██╔══██╗██╔════╝██╔══██╗
@@ -516,7 +654,50 @@ const NimbleController = () => {
 
     return (
         <div id='NimbleController'>
+            {/*<WebSocketComponent eomSpeed={eomSpeed} setEomSpeed={setEomSpeed}/>*/}
+            <div className='info_pane'>
+                <div className='top_fill'></div>
+                <div className='contents'>
+                    {
+                        selectedMode == 'default' ? (
+                            <>
+                                <h4><i className="icofont-loop"></i> Default Mode</h4>
+                                <div><i className="icofont-hand-drag1"></i> Push the NCM button to Play/Resume</div>
+                                <div><i className="icofont-settings"></i> Set your stroke range, stroke count, pause seconds and speed</div>
+                                <div><i className="icofont-loop"></i> Nimble will cycle between strokes and pauses</div>
+                            </>
+                        ) : selectedMode == 'shuffle' ? (
+                            <>
+                                <h4><i className="icofont-random"></i> Shuffle Mode</h4>
+                                <div><i className="icofont-settings"></i> Set your Min/Max for stroke range, stroke count, pause seconds and speed</div>
+                                <div><i className="icofont-hand-drag1"></i> Push the NCM button to Play/Resume</div>
+                                <div><i className="icofont-loop"></i> Nimble will randomise within your selected min & max values.</div>
+                                <div><i className="icofont-ui-rotation"></i> Turn the NCM knob to scale pause & stroke counts during your session.</div>
+                            </>
+                        ) : selectedMode == 'StopGo' ? (
+                            <>
+                                <h4><i className="icofont-traffic-light"></i> Stop & Go Mode</h4>
+                                <div><i className="icofont-hand-drag1"></i> Push the NCM button to stroke, release the button to stop.</div>
+                                <div><i className="icofont-chart-histogram-alt"></i> Speed will increase by 1% every RAMP milliseconds until the button is released. Choose 0 for no ramp.</div>
+                                <div><i className="icofont-score-board"></i> Try and get your stroke total as high as you can!</div>
+                            </>
+                        ) : selectedMode == 'eom' ? (
+                            <>
+                                <h4><i className="icofont-traffic-light"></i> Edge-O-Matic Mode (only for use for EOM Owners)</h4>
+                                <div><i class="icofont-ui-settings"></i> Change the IP to the one shown on your EOM, this can be found in the setting screen</div>
+                                <div><i class="icofont-ui-settings"></i> Your EOM config.json should have use_ssl:false websocket_port:80 (these are the defaults)</div>
+                                <div><i class="icofont-warning"></i> Important, Insecure content must be enabled for this site on chrome to enable the connection to the EOM</div>
+                                <div><i class="icofont-info-circle"></i> The EOM settings do all the driving here, tweak these as you normaly would and the nimble will stroke when the EOM allows (any non zero speed), the nimble will not do any speed ramping. (Tried it, felt jankey)</div>
+                            </>
+                        ) : (null)
+                    }
+
+                </div>
+                <div className='toggle_info' onClick={(e) => setShowInfo(!showInfo)}><i className="icofont-info-square"></i></div>
+            </div>
           <ControllerMainWrapper
+            showInfo={showInfo}
+            setShowInfo={setShowInfo}
             code={code}
             encoderValue={encoderValue}
             inputCode={inputCode}
@@ -530,7 +711,10 @@ const NimbleController = () => {
             connecting={connecting}
             handleConnect={handleConnect}
             shuffleMode={shuffleMode}
-            setShuffleMode={setShuffleMode}
+            handleCycleMode={handleCycleMode}
+            modes={modes}
+            selectedMode={selectedMode}
+            setSelectedMode={setSelectedMode}
             minPositionLower={minPositionLower}
             setMinPositionLower={setMinPositionLower}
             maxPositionUpper={maxPositionUpper}
@@ -569,6 +753,15 @@ const NimbleController = () => {
             setAirOut={setAirOut}
             totalStrokes={totalStrokes}
             cacheValues={cacheValues}
+            rampInterval={rampInterval}
+            setRampInterval={setRampInterval}
+            connectionIp={connectionIp}
+            setConnectionIp={setConnectionIp}
+            eomSpeed={eomSpeed}
+            connectToEom={connectToEom}
+            eomConnecting={eomConnecting}
+            eomConnected={eomConnected}
+            eomArousal={eomArousal}
           />
         </div>
     );

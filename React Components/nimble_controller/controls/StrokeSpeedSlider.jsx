@@ -42,7 +42,7 @@ const SpeedSlider = styled(ReactSlider)`
 `;
 
 
-const StrokeSpeedSlider = ({maxSpeed,setMaxSpeed}) => {
+const StrokeSpeedSlider = ({maxSpeed,setMaxSpeed,selectedMode,speed}) => {
 	const speedThumb = (props, state) => <div {...props}>{state.value}%</div>;
 	const Track = (props, state) => <div {...props} index={state.index}></div>;
 	const handleSpeedSliderChange = (value) => {
@@ -54,7 +54,7 @@ const StrokeSpeedSlider = ({maxSpeed,setMaxSpeed}) => {
 		        min={0}
 		        max={100}
 		        defaultValue={[maxSpeed]} // Set to initial positions within your range
-		        value={maxSpeed}
+		        value={selectedMode === 'StopGo' || selectedMode === 'eom' ? speed : maxSpeed}
                 renderTrack={Track}
 		        renderThumb={speedThumb}
 		        orientation="vertical"

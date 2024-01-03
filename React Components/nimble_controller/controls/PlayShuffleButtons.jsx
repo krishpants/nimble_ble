@@ -1,6 +1,6 @@
 import React from 'react';
 
-const PlayShuffleButtons = ({controllerJoined,remoteRoomId,running,setRunning,shuffleMode,setShuffleMode}) => {
+const PlayShuffleButtons = ({controllerJoined,remoteRoomId,running,setRunning,selectedMode,handleCycleMode}) => {
 	return(
         <div className='play_pause_wrapper'>
           {running ? (
@@ -8,7 +8,7 @@ const PlayShuffleButtons = ({controllerJoined,remoteRoomId,running,setRunning,sh
                 onClick={() => {
                     setRunning(false);
                 }} 
-                className={`playPauseButton pause`}
+                className={`playPauseButton pause ${selectedMode}`}
             >
                 <i className="icofont-ui-pause"></i>
             </button>
@@ -17,19 +17,16 @@ const PlayShuffleButtons = ({controllerJoined,remoteRoomId,running,setRunning,sh
                 onClick={() => {
                     setRunning(true);
                 }} 
-                className={`playPauseButton play`}
+                className={`playPauseButton play ${selectedMode}`}
             >
                 <i className="icofont-ui-play"></i>
             </button>
           )}
           {controllerJoined || remoteRoomId ? (null) : (
             <button 
-                onClick={() => {
-                    setShuffleMode(!shuffleMode);
-                }} 
-                className={`shuffleModeButton ${shuffleMode && "active"}`}
+                onClick={handleCycleMode} 
+                className={`modeButton ${selectedMode}`}
             >
-                <i className="icofont-random"></i>
             </button>
         )}
         </div>

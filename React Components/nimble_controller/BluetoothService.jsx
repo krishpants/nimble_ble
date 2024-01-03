@@ -86,7 +86,10 @@ const startNotifications = (characteristic, dataType, callback) => {
       console.error('Unsupported data type:', dataType);
       return;
     }
+
+    console.log('abc')
     callback(data);
+    console.log('zyz')
   });
 
   return characteristic.startNotifications()
