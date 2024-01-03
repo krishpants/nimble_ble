@@ -30,6 +30,14 @@ If you want continuous stroking a delay of 0s can be used.
 ### Shuffle Mode:
 In shuffle mode all the setting split to set a MIN-MAX range for all the perameters. Each setting will be randomised after every loop.
 
+### Stop & Go Mode:
+This is a simple but effective mode where the button on the NCM can be held like a a dead man's switch to initiate stroking. Stroking will cease as soon as the button is released and resume when pushed again. Optinaly this mode can ramp the speed up slowly over time the longer you hold the button.
+
+### Edge-O-Matic 3000 Mode:
+For owners of the EOM3K, this is a simple websocket integration which takes stop and stoke commands from a wifi connected EOM. The connection IP can be found on your EOM in the network setting pane. your config.json should have ssl disabled and the port left at 80.
+IMPORTANT:
+Due to ssl limitations, the EOM needs to use a non SSL connection and the Nimble BTLE connection requires SSL, due to mixed content blocks, the user will need to enable "insecure content" on Chrome before this mode will work.
+
 ## Advanced Usage:
 ### ESP Sketch
 Adjusting the lower part of the sketch is possible without changing the web app as long as the web app's communication structure does not need to be adjusted. If you need to change parts of the communication protocol then you will need to edit the react component. 
@@ -43,9 +51,3 @@ You may need to enable Web Bluetooth API as an experimental feature in chrome be
 
 Device not showing up in bluetooth menu on computer?
 BLE communications will not appear in an OS bluetooth menu and there is no "Pairing" stage as such. connection is done directly from the browser window and the ESP should be presented when clicking the BT connect button on page load if it is on and waiting for a connection.
-
-## Change Log
-
-0.02 (still compatable) - No HW Changes - Added some debouncing for the sliders. This means they will sort of update in real time with a small lag to prevent too much bt traffic.
-0.02 - Sin Gen Function changed - Value changes during motion now ease smoothly. \
-0.01 - First Working\
