@@ -2,7 +2,7 @@
 Nimble Controller - BLE Web App
 
 ## Getting Started:
-Upload the NimbleBTWeb.ino sketch to your Nimble Control Module using the Arduino IDE
+Upload the NimbleBTWeb.ino sketch to your Nimble Control Module using the Arduino IDE: https://www.arduino.cc/en/software
 Note: you may need to change the partition scheme to 2mb/2mb as the blt libraries included are quite large and do not fit on the default partition scheme for the ESP32 Dev Module that the Arduino IDE default to.
 
 On successfully upload the, the blue led on the Nimble Control Module will flash indicating it is awaiting a ble connection.
