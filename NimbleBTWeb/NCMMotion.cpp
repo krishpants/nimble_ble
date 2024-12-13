@@ -8,6 +8,14 @@ NCMMotion::NCMMotion() {
   positionCommand = 0;
   lastMovement = 0;
   setMaxFrequency(5);
+  // Initialize default modulation parameters
+  minModChange = 0.0f; //0.0f
+  maxModChange = 0.0f; //0.0f
+  minUpDownSpeed = 1.0f; //1.0f
+  maxUpDownSpeed = 1.0f; //1.0f
+  minShapeMod = 1.0f; //1.0f
+  maxShapeMod = 1.0f; //1.0f
+  modulationInterval = 1000; // Default interval in milliseconds
 }
 
 void NCMMotion::begin() {
@@ -55,6 +63,72 @@ void NCMMotion::generateSineWave() {
   prevSineWave = sineVal;
   positionCommand = output;
 }
+
+
+void NCMMotion::generateRandomWave() {
+    static float prevWaveValue = 2.0; // Initialize outside typical wave range
+    const float minThreshold = -0.95; // Threshold close to the minimum value
+    static unsigned long lastGenUpdateTime;
+    static float phase;
+    static float upSpeedMod = 1.0; // Modulation for upward velocity
+    static float downSpeedMod = 1.0; // Modulation for downward velocity
+    static float shapeMod = 1.0; // Modulation for wave shape
+
+    unsigned long currentTime = millis();
+    if (isFirstCall) {
+        lastGenUpdateTime = currentTime;
+        phase = 3 * PI / 2; // Start at the minimum position
+        upSpeedMod = 1.0;
+        downSpeedMod = 1.0;
+        shapeMod = 1.0;
+        isFirstCall = false;
+    }
+
+    float timeElapsed = (currentTime - lastGenUpdateTime) / 1000.0; // Time in seconds
+    lastGenUpdateTime = currentTime;
+    lastMovement = currentTime;
+
+    // Randomly modulate speeds and shape over time
+    static unsigned long lastModulationTime = 0;
+    if (currentTime - lastModulationTime > modulationInterval) { // Update modulation every interval
+        upSpeedMod += (random(-100, 100) / 100.0f) * maxModChange;
+        downSpeedMod += (random(-100, 100) / 100.0f) * maxModChange;
+        shapeMod += (random(-100, 100) / 100.0f) * minModChange;
+
+        // Clamp modulations to avoid extreme values
+        upSpeedMod = constrain(upSpeedMod, minUpDownSpeed, maxUpDownSpeed);
+        downSpeedMod = constrain(downSpeedMod, minUpDownSpeed, maxUpDownSpeed);
+        shapeMod = constrain(shapeMod, minShapeMod, maxShapeMod);
+
+        lastModulationTime = currentTime;
+    }
+
+    // Calculate the phase increment with separate up and down speeds
+    float speedMod = (sin(phase) >= 0) ? upSpeedMod : downSpeedMod;
+    float phaseIncrement = 2 * PI * frequency * timeElapsed * speedMod;
+    phase += phaseIncrement;
+    if (phase > 2 * PI) {
+        phase -= 2 * PI; // Keep phase within a 0-2PI range
+    }
+
+    // Generate a more complex waveform by modulating the sine wave
+    float baseWave = sin(phase);
+    float modulatedWave = baseWave * shapeMod + cos(phase * shapeMod) * (1 - shapeMod);
+
+    // Map the wave to the output range
+    long output = minPosition + (modulatedWave + 1) * (maxPosition - minPosition) / 2;
+
+    // Count loops when crossing the minimum threshold
+    if (prevWaveValue < minThreshold && modulatedWave >= minThreshold) {
+        loopCount++;
+    }
+    prevWaveValue = modulatedWave;
+
+    // Set the position command
+    positionCommand = output;
+}
+
+
 
 void NCMMotion::easeToBasePosition() {
   minPosition = targetMinPosition;
@@ -137,4 +211,39 @@ void NCMMotion::setMaxFrequency(float maxHz) {
     if (maxHz > 0.0) {
         maxFrequency = maxHz;
     }
+}
+
+
+
+
+
+
+
+
+void NCMMotion::setMinModChange(float value) {
+    minModChange = value;
+}
+
+void NCMMotion::setMaxModChange(float value) {
+    maxModChange = value;
+}
+
+void NCMMotion::setMinUpDownSpeed(float value) {
+    minUpDownSpeed = value;
+}
+
+void NCMMotion::setMaxUpDownSpeed(float value) {
+    maxUpDownSpeed = value;
+}
+
+void NCMMotion::setMinShapeMod(float value) {
+    minShapeMod = value;
+}
+
+void NCMMotion::setMaxShapeMod(float value) {
+    maxShapeMod = value;
+}
+
+void NCMMotion::setModulationInterval(unsigned long interval) {
+    modulationInterval = interval;
 }

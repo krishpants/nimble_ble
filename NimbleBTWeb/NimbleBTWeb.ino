@@ -64,7 +64,8 @@ void runMainOperation() {
       break;
       
     case 2:
-      motion.generateSineWave();
+      // motion.generateSineWave();
+      motion.generateRandomWave();
       if (motion.getLoopCount() > ncmb.loopCap){
         runningStage ++;
       }

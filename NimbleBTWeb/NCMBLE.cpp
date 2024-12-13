@@ -27,8 +27,16 @@ void NCMBLE::begin() {
         BLECharacteristic::PROPERTY_WRITE
     );
     pVariablesCharacteristic->addDescriptor(new BLE2902());
-    // pVariablesCharacteristic->setCallbacks(new MyCallbacks());
     pVariablesCharacteristic->setCallbacks(new MyCallbacks(*this));
+
+
+    pModulationCharacteristic = pService->createCharacteristic(
+        MODULATION_VARIABLES_CHARACTERISTIC_UUID,
+        BLECharacteristic::PROPERTY_READ |
+        BLECharacteristic::PROPERTY_WRITE
+    );
+    pModulationCharacteristic->addDescriptor(new BLE2902());
+    pModulationCharacteristic->setCallbacks(new ModulationCallback(*this));
 
     pRunstageCharacteristic = pService->createCharacteristic(
         RUNSTAGE_CHARACTERISTIC_UUID,
@@ -106,6 +114,32 @@ void NCMBLE::MyCallbacks::onWrite(BLECharacteristic *pVariablesCharacteristic) {
         ncmbInstance.defaultsSet = true;
     } catch (const std::invalid_argument& e) {
         // Serial.println("Handle error: one of the parts could not be converted to the correct type");
+        return;
+    }
+}
+
+void NCMBLE::ModulationCallback::onWrite(BLECharacteristic *pModulationCharacteristic) {
+    std::string value = pModulationCharacteristic->getValue();
+    // Split the string by commas and store the parts in a vector
+    std::vector<std::string> parts;
+    std::stringstream valueStream(value);
+    std::string part;
+    while (std::getline(valueStream, part, ',')) {
+        parts.push_back(part);
+    }
+    if (parts.size() != 7) {        return;
+    }
+
+    // Convert each part to the correct type and assign to variables
+    try {
+        ncmbInstance.motionInstance.setMinModChange(std::stof(parts[0]));
+        ncmbInstance.motionInstance.setMaxModChange(std::stof(parts[1]));
+        ncmbInstance.motionInstance.setMinUpDownSpeed(std::stof(parts[2]));
+        ncmbInstance.motionInstance.setMaxUpDownSpeed(std::stof(parts[3]));
+        ncmbInstance.motionInstance.setMinShapeMod(std::stof(parts[4]));
+        ncmbInstance.motionInstance.setMaxShapeMod(std::stof(parts[5]));
+        ncmbInstance.motionInstance.setModulationInterval(std::stoi(parts[6]));
+    } catch (const std::invalid_argument& e) {
         return;
     }
 }

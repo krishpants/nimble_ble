@@ -1,5 +1,3 @@
-// NCMBLE.h
-
 #ifndef NCMBLE_H
 #define NCMBLE_H
 
@@ -29,13 +27,14 @@ public:
     long loopDelay;
 
 private:
-    std::string HW_VERSION = "0.04";
+    std::string HW_VERSION = "0.05";
     BLECharacteristic *pVersionCharacteristic;
     BLECharacteristic *pVariablesCharacteristic;
     BLECharacteristic *pRunstageCharacteristic;
     BLECharacteristic *pLoopCountCharacteristic;
     BLECharacteristic *pEncoderCharacteristic;
     BLECharacteristic *pButtonCharacteristic;
+    BLECharacteristic *pModulationCharacteristic;
     BLEServer *pServer;
     BLEService *pService;
 
@@ -47,6 +46,7 @@ private:
     static constexpr char* LOOP_COUNT_CHARACTERISTIC_UUID = "03f779e0-65b8-4dbf-a984-637d02b8c07c";
     static constexpr char* ENCODER_CHARACTERISTIC_UUID = "1a08f9e4-30b2-4d41-ad4e-330a1cc8311a";
     static constexpr char* BUTTON_CHARACTERISTIC_UUID = "1997a6f1-8ab7-4036-82e4-a198e6dfcc52";
+    static constexpr char* MODULATION_VARIABLES_CHARACTERISTIC_UUID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
     static constexpr char* DEVICE_NAME = "Nimble_BT";
 
     // Reference to NCMMotion instance
@@ -58,13 +58,22 @@ private:
         void onDisconnect(BLEServer* pServer) override;
     };
 
-    // Callback class for BLECharacteristic
+    // Callback class for pVariablesCharacteristic
     class MyCallbacks : public BLECharacteristicCallbacks {
-        NCMBLE& ncmbInstance; // Add a reference to NCMBLE
+        NCMBLE& ncmbInstance; // Reference to NCMBLE
 
     public:
         MyCallbacks(NCMBLE& instance) : ncmbInstance(instance) {} // Constructor to initialize the reference
         void onWrite(BLECharacteristic *pVariablesCharacteristic) override;
+    };
+
+    // Callback class for pModulationCharacteristic
+    class ModulationCallback : public BLECharacteristicCallbacks {
+        NCMBLE& ncmbInstance; // Reference to NCMBLE
+
+    public:
+        ModulationCallback(NCMBLE& instance) : ncmbInstance(instance) {} // Constructor to initialize the reference
+        void onWrite(BLECharacteristic *pModulationCharacteristic) override;
     };
 
 };
