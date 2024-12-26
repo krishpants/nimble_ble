@@ -27,7 +27,7 @@ public:
     long loopDelay;
 
 private:
-    std::string HW_VERSION = "0.05";
+    std::string HW_VERSION = "0.06";
     BLECharacteristic *pVersionCharacteristic;
     BLECharacteristic *pVariablesCharacteristic;
     BLECharacteristic *pRunstageCharacteristic;
