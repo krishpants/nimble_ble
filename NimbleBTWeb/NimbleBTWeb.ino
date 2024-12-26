@@ -50,7 +50,9 @@ void runMainOperation() {
   switch (runningStage) {
     case 0:
       motion.easeToBasePosition();
+      motion.easingHelper();
       if (ncmb.running){
+        motion.enableEaseToBaseWhileStopped();
         runningStage ++;
       }
       break;
@@ -77,6 +79,10 @@ void runMainOperation() {
       if (motion.timeSinceLastMovement() >= ncmb.loopDelay){
         runningStage = 1;
       }
+      break;
+
+    case 4:
+      // Do Nothing // Raw Posiiton Mode
       break;
       
     default:

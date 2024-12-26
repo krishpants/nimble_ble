@@ -35,6 +35,7 @@ private:
     BLECharacteristic *pEncoderCharacteristic;
     BLECharacteristic *pButtonCharacteristic;
     BLECharacteristic *pModulationCharacteristic;
+    BLECharacteristic *pRawPositionCharacteristic;
     BLEServer *pServer;
     BLEService *pService;
 
@@ -47,6 +48,7 @@ private:
     static constexpr char* ENCODER_CHARACTERISTIC_UUID = "1a08f9e4-30b2-4d41-ad4e-330a1cc8311a";
     static constexpr char* BUTTON_CHARACTERISTIC_UUID = "1997a6f1-8ab7-4036-82e4-a198e6dfcc52";
     static constexpr char* MODULATION_VARIABLES_CHARACTERISTIC_UUID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+    static constexpr char* RAW_POSITION_CHARACTERISTIC_UUID = "782423b4-e5bf-4754-b66d-362966e264d2";
     static constexpr char* DEVICE_NAME = "Nimble_BT";
 
     // Reference to NCMMotion instance
@@ -74,6 +76,15 @@ private:
     public:
         ModulationCallback(NCMBLE& instance) : ncmbInstance(instance) {} // Constructor to initialize the reference
         void onWrite(BLECharacteristic *pModulationCharacteristic) override;
+    };
+
+    // Callback class for pModulationCharacteristic
+    class RawPositionCallback : public BLECharacteristicCallbacks {
+        NCMBLE& ncmbInstance; // Reference to NCMBLE
+
+    public:
+        RawPositionCallback(NCMBLE& instance) : ncmbInstance(instance) {} // Constructor to initialize the reference
+        void onWrite(BLECharacteristic *pRawPositionCharacteristic) override;
     };
 
 };

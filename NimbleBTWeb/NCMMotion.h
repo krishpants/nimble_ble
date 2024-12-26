@@ -8,6 +8,7 @@ public:
   void begin(); // Initialize the library
 
   // Setters for values
+  void setRawPosition(long position);
   void setMinPosition(long position);
   void setMaxPosition(long position);
   void setSpeed(int speed);
@@ -27,10 +28,12 @@ public:
   void generateSineWave();
   void generateRandomWave();
   void easeToBasePosition();
+  void easingHelper();
 
   // Reset functions
   void resetLoopCounter();
   void resetFirstCall();
+  void enableEaseToBaseWhileStopped();
 
   // Getters
   int getLoopCount();
@@ -40,6 +43,7 @@ public:
 
 private:
   // Set variables
+  long targetPosition;
   long targetMinPosition;
   long targetMaxPosition;
   float frequency; // Set After Conversion map 0-100 > 0 - maxFrequency HZ
@@ -66,6 +70,9 @@ private:
   float minShapeMod;
   float maxShapeMod;
   unsigned long modulationInterval;
+
+  //
+  bool easeToBaseEnabled;
 
   
   // Helper functions

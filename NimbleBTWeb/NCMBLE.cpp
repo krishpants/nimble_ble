@@ -38,6 +38,18 @@ void NCMBLE::begin() {
     pModulationCharacteristic->addDescriptor(new BLE2902());
     pModulationCharacteristic->setCallbacks(new ModulationCallback(*this));
 
+
+
+    pRawPositionCharacteristic = pService->createCharacteristic(
+        RAW_POSITION_CHARACTERISTIC_UUID,
+        BLECharacteristic::PROPERTY_READ |
+        BLECharacteristic::PROPERTY_WRITE |
+        BLECharacteristic::PROPERTY_WRITE_NR // Add Write Without Response
+    );
+    pRawPositionCharacteristic->addDescriptor(new BLE2902());
+    pRawPositionCharacteristic->setCallbacks(new RawPositionCallback(*this));
+
+
     pRunstageCharacteristic = pService->createCharacteristic(
         RUNSTAGE_CHARACTERISTIC_UUID,
         BLECharacteristic::PROPERTY_NOTIFY
@@ -64,6 +76,28 @@ void NCMBLE::begin() {
 
     pService->start();
     pServer->getAdvertising()->start();
+
+
+    // Update BLE connection parameters
+    esp_ble_conn_update_params_t conn_params = {
+        .min_int = 6,  // 7.5ms (minimum connection interval in BLE units)
+        .max_int = 12, // 15ms
+        .latency = 0,  // No slave latency
+        .timeout = 400 // Supervision timeout in 4s
+    };
+    esp_ble_gap_update_conn_params(&conn_params);
+
+
+
+
+
+
+
+
+
+
+
+    
 }
 
 bool NCMBLE::isConnected() {
@@ -143,6 +177,20 @@ void NCMBLE::ModulationCallback::onWrite(BLECharacteristic *pModulationCharacter
         return;
     }
 }
+
+void NCMBLE::RawPositionCallback::onWrite(BLECharacteristic *pRawPositionCharacteristic) {
+    std::string value = pRawPositionCharacteristic->getValue();
+
+    if (value.size() == 2) { // Ensure 2 bytes received
+        // Convert bytes to int16 (little-endian assumed)
+        int16_t position = (int16_t)((uint8_t)value[1] << 8 | (uint8_t)value[0]);
+        
+        if (position >= -1000 && position <= 1000) {
+            ncmbInstance.motionInstance.setRawPosition(position);
+        }
+    }
+}
+
 
 
 void NCMBLE::sendEncoderDirection(const char* direction) {

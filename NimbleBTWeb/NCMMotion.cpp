@@ -5,6 +5,7 @@ NCMMotion::NCMMotion() {
   loopCount = 0;
   isFirstCall = true;
   inBasePosition = false;
+  easeToBaseEnabled = true;
   positionCommand = 0;
   lastMovement = 0;
   setMaxFrequency(5);
@@ -21,6 +22,41 @@ NCMMotion::NCMMotion() {
 void NCMMotion::begin() {
   // Initialize the library, if needed
 }
+
+void NCMMotion::setRawPosition(long position) {
+  easeToBaseEnabled = false;
+  inBasePosition = true;
+  targetPosition = constrain(position, -1000, 1000);
+}
+
+void NCMMotion::easingHelper() {
+    if (easeToBaseEnabled) return; // Skip easing if another mode is active
+
+    static unsigned long lastUpdateTime = 0; // Last update time in microseconds
+    const unsigned long stepInterval = 100; // Time between steps in microseconds (1ms)
+    const int stepSize = 2; // Increment/decrement size
+    unsigned long currentTime = micros();
+    if (currentTime - lastUpdateTime >= stepInterval) {
+        lastUpdateTime = currentTime;
+        if (positionCommand < targetPosition) {
+            positionCommand += stepSize;
+            if (positionCommand > targetPosition) { // Prevent overshooting
+                positionCommand = targetPosition;
+            }
+        } else if (positionCommand > targetPosition) {
+            positionCommand -= stepSize;
+            if (positionCommand < targetPosition) { // Prevent overshooting
+                positionCommand = targetPosition;
+            }
+        }
+        // Optional: Add any end-of-easing logic here when target is reached
+        if (positionCommand == targetPosition) {
+            // Easing complete
+        }
+    }
+}
+
+
 
 void NCMMotion::setMinPosition(long position) {
   targetMinPosition = constrain(position, -1000, 1000);
@@ -131,6 +167,9 @@ void NCMMotion::generateRandomWave() {
 
 
 void NCMMotion::easeToBasePosition() {
+  if (!easeToBaseEnabled) {
+    return;
+  }
   minPosition = targetMinPosition;
   maxPosition = targetMaxPosition;
   static unsigned long lastUpdateTime = 0; // Static to maintain state across function calls
@@ -183,6 +222,11 @@ void NCMMotion::resetLoopCounter() {
 
 void NCMMotion::resetFirstCall() {
   isFirstCall = true;
+}
+
+void NCMMotion::enableEaseToBaseWhileStopped() {
+  easeToBaseEnabled = true;
+  inBasePosition = false;
 }
 
 float NCMMotion::mapSpeedToFrequency(int speed) {
