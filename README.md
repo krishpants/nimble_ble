@@ -11,6 +11,8 @@ On opening NimbleBTWeb.ino, the related files will also be opened by the ide fro
 
 **Change the partition scheme to 2mb/2mb** - the blt libraries included are quite large and do not fit on the default partition scheme for the ESP32 Dev Module that the Arduino IDE default to.
 
+**Baud Rate / Upload Speed** - Some users have reported upload failure at high default baudrates in the Arduino ide, set to 115200 if having issues.
+
 **BREAKING CHANGES 2024** - 2 Libraries do not work on the newest versions which are installed by default they are as follows:
 
 **Important:** In the *BOARDS MANAGER* of the arduino ide the version of the ESP32 library needs to be set back to a 2.X version not a 3.X version. 
