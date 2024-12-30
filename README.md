@@ -56,6 +56,10 @@ For owners of the EOM3K, this is a simple websocket integration which takes stop
 IMPORTANT:
 Due to ssl limitations, the EOM needs to use a non SSL connection and the Nimble BTLE connection requires SSL, due to mixed content blocks, the user will need to enable "insecure content" on Chrome before this mode will work.
 
+## Stroke Style Modulation:
+
+Stroke style modulate is a global modulation of the stroking pattern for a more organic less consistent stroke pattern if desired. 4 Presets have been added so far with different stroke styles. 
+
 ## Advanced Usage:
 ### ESP Sketch
 Adjusting the lower part of the sketch is possible without changing the web app as long as the web app's communication structure does not need to be adjusted. If you need to change parts of the communication protocol then you will need to edit the react component. 
