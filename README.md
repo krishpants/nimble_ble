@@ -26,7 +26,7 @@ On opening NimbleBTWeb.ino, the related files will also be opened by the ide fro
 On successfully upload the, the blue led on the Nimble Control Module will flash indicating it is awaiting a ble connection.
 
 ## Usage:
-The web app can be found at https://www.jrk-it.com/nimble_controller
+The web app can be found at https://www.kink-different.com/nimble_controller
 
 Note: the Web Bluetooth API is not supported across all browsers. The only browser this is confirmed to be working on is Chrome Desktop. There maybe some mobile browsers which support it but native Safari on iOS does not. Not tested on android.
 Note: If the hardware sketch is updated I will change the version on the React app and you will need to update your Nimble Controll module before you can reconnect.
