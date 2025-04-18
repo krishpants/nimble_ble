@@ -27,7 +27,7 @@ public:
     long loopDelay;
 
 private:
-    std::string HW_VERSION = "0.06";
+    std::string HW_VERSION = "0.07";
     BLECharacteristic *pVersionCharacteristic;
     BLECharacteristic *pVariablesCharacteristic;
     BLECharacteristic *pRunstageCharacteristic;
@@ -36,6 +36,7 @@ private:
     BLECharacteristic *pButtonCharacteristic;
     BLECharacteristic *pModulationCharacteristic;
     BLECharacteristic *pRawPositionCharacteristic;
+    BLECharacteristic *pVibrationCharacteristic;
     BLEServer *pServer;
     BLEService *pService;
 
@@ -49,6 +50,7 @@ private:
     static constexpr char* BUTTON_CHARACTERISTIC_UUID = "1997a6f1-8ab7-4036-82e4-a198e6dfcc52";
     static constexpr char* MODULATION_VARIABLES_CHARACTERISTIC_UUID = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
     static constexpr char* RAW_POSITION_CHARACTERISTIC_UUID = "782423b4-e5bf-4754-b66d-362966e264d2";
+    static constexpr char* VIBRATION_CHARACTERISTIC_UUID = "8e697e3e-5b1d-44fc-8979-5cb95d14763a";
     static constexpr char* DEVICE_NAME = "Nimble_BT";
 
     // Reference to NCMMotion instance
@@ -85,6 +87,15 @@ private:
     public:
         RawPositionCallback(NCMBLE& instance) : ncmbInstance(instance) {} // Constructor to initialize the reference
         void onWrite(BLECharacteristic *pRawPositionCharacteristic) override;
+    };
+
+    // Callback class for pVibrationCharacteristic
+    class VibrationPeramCallback : public BLECharacteristicCallbacks {
+        NCMBLE& ncmbInstance; // Reference to NCMBLE
+
+    public:
+        VibrationPeramCallback(NCMBLE& instance) : ncmbInstance(instance) {} // Constructor to initialize the reference
+        void onWrite(BLECharacteristic *pVibrationCharacteristic) override;
     };
 
 };

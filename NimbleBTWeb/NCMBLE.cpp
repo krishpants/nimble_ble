@@ -39,6 +39,15 @@ void NCMBLE::begin() {
     pModulationCharacteristic->setCallbacks(new ModulationCallback(*this));
 
 
+    pVibrationCharacteristic = pService->createCharacteristic(
+        VIBRATION_CHARACTERISTIC_UUID,
+        BLECharacteristic::PROPERTY_READ |
+        BLECharacteristic::PROPERTY_WRITE
+    );
+    pVibrationCharacteristic->addDescriptor(new BLE2902());
+    pVibrationCharacteristic->setCallbacks(new VibrationPeramCallback(*this));
+
+
 
     pRawPositionCharacteristic = pService->createCharacteristic(
         RAW_POSITION_CHARACTERISTIC_UUID,
@@ -153,6 +162,7 @@ void NCMBLE::MyCallbacks::onWrite(BLECharacteristic *pVariablesCharacteristic) {
 }
 
 void NCMBLE::ModulationCallback::onWrite(BLECharacteristic *pModulationCharacteristic) {
+
     std::string value = pModulationCharacteristic->getValue();
     // Split the string by commas and store the parts in a vector
     std::vector<std::string> parts;
@@ -173,6 +183,29 @@ void NCMBLE::ModulationCallback::onWrite(BLECharacteristic *pModulationCharacter
         ncmbInstance.motionInstance.setMinShapeMod(std::stof(parts[4]));
         ncmbInstance.motionInstance.setMaxShapeMod(std::stof(parts[5]));
         ncmbInstance.motionInstance.setModulationInterval(std::stoi(parts[6]));
+    } catch (const std::invalid_argument& e) {
+        return;
+    }
+}
+
+void NCMBLE::VibrationPeramCallback::onWrite(BLECharacteristic *pVibrationCharacteristic) {
+
+    std::string value = pVibrationCharacteristic->getValue();
+    // Split the string by commas and store the parts in a vector
+    std::vector<std::string> parts;
+    std::stringstream valueStream(value);
+    std::string part;
+    while (std::getline(valueStream, part, ',')) {
+        parts.push_back(part);
+    }
+    if (parts.size() != 3) {        return;
+    }
+
+    // Convert each part to the correct type and assign to variables
+    try {
+        ncmbInstance.motionInstance.setTargetVibrationAmplitude(std::stof(parts[0]));
+        ncmbInstance.motionInstance.setTargetVibrationFrequency(std::stof(parts[1]));
+        ncmbInstance.motionInstance.setVibrationEasingRate(std::stof(parts[2]));
     } catch (const std::invalid_argument& e) {
         return;
     }

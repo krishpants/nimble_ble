@@ -24,6 +24,13 @@ public:
   void setModulationInterval(unsigned long interval);
 
 
+  // Setter functions for vibration parameters
+  void setVibrationEasingRate(float value);
+  void setTargetVibrationAmplitude(float value);
+  void setTargetVibrationFrequency(float value);
+  long addVibration(long value);
+  void easeVibrationParams();
+
   // Main functions
   void generateSineWave();
   void generateRandomWave();
@@ -70,6 +77,17 @@ private:
   float minShapeMod;
   float maxShapeMod;
   unsigned long modulationInterval;
+
+  // Vibration Modulation Parameters
+  float vibrationEasingRate;
+  float targetVibrationFrequency;
+  float targetVibrationAmplitude;
+  float vibrationAmplitude;   // The smoothed current amplitude
+  float vibrationFrequency;   // The smoothed current frequency
+  float vibrationPhase;       // To track high-freq vibration phase
+  unsigned long lastVibrationUpdate; // Time of last update
+
+
 
   //
   bool easeToBaseEnabled;

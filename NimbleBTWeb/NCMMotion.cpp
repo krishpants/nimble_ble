@@ -2,21 +2,30 @@
 #include <Arduino.h>
 
 NCMMotion::NCMMotion() {
-  loopCount = 0;
-  isFirstCall = true;
-  inBasePosition = false;
-  easeToBaseEnabled = true;
-  positionCommand = 0;
-  lastMovement = 0;
-  setMaxFrequency(5);
-  // Initialize default modulation parameters
-  minModChange = 0.0f; //0.0f
-  maxModChange = 0.0f; //0.0f
-  minUpDownSpeed = 1.0f; //1.0f
-  maxUpDownSpeed = 1.0f; //1.0f
-  minShapeMod = 1.0f; //1.0f
-  maxShapeMod = 1.0f; //1.0f
-  modulationInterval = 1000; // Default interval in milliseconds
+    loopCount = 0;
+    isFirstCall = true;
+    inBasePosition = false;
+    easeToBaseEnabled = true;
+    positionCommand = 0;
+    lastMovement = 0;
+    setMaxFrequency(5);
+    // Initialize default modulation parameters
+    minModChange = 0.0f; //0.0f
+    maxModChange = 0.0f; //0.0f
+    minUpDownSpeed = 1.0f; //1.0f
+    maxUpDownSpeed = 1.0f; //1.0f
+    minShapeMod = 1.0f; //1.0f
+    maxShapeMod = 1.0f; //1.0f
+    modulationInterval = 1000; // Default interval in milliseconds
+
+    targetVibrationAmplitude = 0.0f;
+    targetVibrationFrequency = 0.0f;
+    vibrationAmplitude = targetVibrationAmplitude;
+    vibrationFrequency = targetVibrationFrequency;
+    vibrationPhase = 0.0f;
+    lastVibrationUpdate = millis(); // or 0, but millis() is safer
+    vibrationEasingRate = 0.2f;
+
 }
 
 void NCMMotion::begin() {
@@ -97,7 +106,8 @@ void NCMMotion::generateSineWave() {
     loopCount++;
   }
   prevSineWave = sineVal;
-  positionCommand = output;
+  // positionCommand = output;
+  positionCommand = addVibration(output);
 }
 
 
@@ -161,7 +171,8 @@ void NCMMotion::generateRandomWave() {
     prevWaveValue = modulatedWave;
 
     // Set the position command
-    positionCommand = output;
+    // positionCommand = output;
+    positionCommand = addVibration(output);
 }
 
 
@@ -290,4 +301,87 @@ void NCMMotion::setMaxShapeMod(float value) {
 
 void NCMMotion::setModulationInterval(unsigned long interval) {
     modulationInterval = interval;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void NCMMotion::setVibrationEasingRate(float value) {
+    vibrationEasingRate = value;
+}
+
+void NCMMotion::setTargetVibrationAmplitude(float value) {
+    targetVibrationAmplitude = value;
+}
+
+void NCMMotion::setTargetVibrationFrequency(float value) {
+    targetVibrationFrequency = value;
+}
+
+
+void NCMMotion::easeVibrationParams() {
+    static unsigned long lastEaseTime = 0;
+    const unsigned long easeInterval = 10; // Every 10ms
+
+    if (millis() - lastEaseTime >= easeInterval) {
+        // Ease Amplitude
+        if (vibrationAmplitude < targetVibrationAmplitude) {
+            vibrationAmplitude += vibrationEasingRate;
+            if (vibrationAmplitude > targetVibrationAmplitude) {
+                vibrationAmplitude = targetVibrationAmplitude;
+            }
+        } else if (vibrationAmplitude > targetVibrationAmplitude) {
+            vibrationAmplitude -= vibrationEasingRate;
+            if (vibrationAmplitude < targetVibrationAmplitude) {
+                vibrationAmplitude = targetVibrationAmplitude;
+            }
+        }
+
+        // Ease Frequency
+        if (vibrationFrequency < targetVibrationFrequency) {
+            vibrationFrequency += vibrationEasingRate;
+            if (vibrationFrequency > targetVibrationFrequency) {
+                vibrationFrequency = targetVibrationFrequency;
+            }
+        } else if (vibrationFrequency > targetVibrationFrequency) {
+            vibrationFrequency -= vibrationEasingRate;
+            if (vibrationFrequency < targetVibrationFrequency) {
+                vibrationFrequency = targetVibrationFrequency;
+            }
+        }
+
+        lastEaseTime = millis();
+    }
+}
+
+
+
+long NCMMotion::addVibration(long baseValue) {
+    easeVibrationParams(); // Smoothly ease amplitude and frequency
+
+    unsigned long currentTime = millis();
+    float deltaTime = (currentTime - lastVibrationUpdate) / 1000.0f; // convert to seconds
+    lastVibrationUpdate = currentTime;
+
+    // Advance the vibration phase
+    vibrationPhase += 2 * PI * vibrationFrequency * deltaTime;
+    if (vibrationPhase > 2 * PI) {
+        vibrationPhase -= 2 * PI; // Wrap phase
+    }
+
+    // Generate vibration offset (sinusoidal)
+    float vibrationOffset = sin(vibrationPhase) * vibrationAmplitude;
+
+    // Add to base motion value
+    return baseValue + static_cast<long>(vibrationOffset);
 }

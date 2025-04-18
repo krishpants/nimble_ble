@@ -58,7 +58,7 @@ Due to ssl limitations, the EOM needs to use a non SSL connection and the Nimble
 
 ## Stroke Style Modulation:
 
-Stroke style modulate is a global modulation of the stroking pattern for a more organic less consistent stroke pattern if desired. 4 Presets have been added so far with different stroke styles. 
+Stroke style modulation is a global modulation of the stroking pattern for a more organic less consistent stroke pattern if desired. 4 Presets have been added so far with different stroke styles. 
 
 ## Advanced Usage:
 ### ESP Sketch
